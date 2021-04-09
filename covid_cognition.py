@@ -1,6 +1,9 @@
 #%%
 
-# Standard libraries...
+#%% [markdown]
+# ## Setup
+#%%
+# Standard libraries
 import pandas as pd
 import numpy as np
 
@@ -85,22 +88,29 @@ def set_column_names(df, new_names):
 write_tables = False
 write_images = False
 
-#%% LOAD AND PROCESS CONTROL DATASET
+#%% [markdown]
+# ## Control (Pre-Pandemic) Dataset
+
+#%% LOAD AND PROCESS CONTROL DATA
 
 Yctrl = SS.score_data(datestamp="2021-01-28")
 
-# List of CBS test score features, used for different calculations
+# List columns corresponding to "timing" (RT) features
 tf  = cbs.timing_features(exclude=['spatial_planning']) # SP does not have one
-tf_ = cbs.abbrev_features(tf)
+tf_ = cbs.abbrev_features(tf)		# Abbreviated name
+
+# List of columns corresponding to score features used in domain score calcs.
 df  = cbs.domain_feature_list()
 df_ = cbs.abbrev_features(df)
+
+# A list of "all" available score features
 af  = list(Yctrl.columns)
 af_ = cbs.abbrev_features(af)
 				
 Xcovar = ['age', 'sex', 'post_secondary', 'SES']
 correct_cols = [f"{test.abbrev}_num_correct" for _, test in cbs.TESTS.items()]
 
-# Loads the control dataset and reorganizes / massages
+# Loads the control dataset (Sleep Study, 2017)
 print("\nControl Scores:")
 Yctrl = (Yctrl
 	.pipe(set_column_names, af_)
@@ -115,6 +125,7 @@ Yctrl = (Yctrl
 )
 
 # Loads and organises the control questionnaire dataset
+# Have to rename a few columns to match them up to the new study data
 print("\nControl Questionnaires:")
 Qctrl = (SS
 	.questionnaire.data[['gender', 'age', 'education', 'SES_growing_up']]
@@ -175,13 +186,11 @@ eigen_values = pd.DataFrame(
 pct_variance = pd.DataFrame(
 	Ypca.get_factor_variance()[1]*100, index=pca_names, columns=['% variance']).T
 
-do_chord = True
-if do_chord:
-	fig = chord_plot(
-			loadings.copy(), var_corrs.copy(), 
-			cscale_name='Picnic', width=700, height=350, threshold=0.20)
-	iplot(fig)
-	fig.write_image('../images/score_PCA.svg')
+fig = chord_plot(
+	loadings.copy(), var_corrs.copy(), 
+	cscale_name='Picnic', width=700, height=350, threshold=0.20)
+iplot(fig)
+fig.write_image('./images/score_PCA.svg')
 
 loadings = (pd
 	.concat([loadings, eigen_values, pct_variance], axis=0)
@@ -190,21 +199,31 @@ loadings = (pd
 	.loc[:, ['mean', 'std']+pca_names]
 )
 
-loadings.to_csv('../tables/pca_loadings.csv')
+loadings.to_csv('./tables/pca_loadings.csv')
 loadings
 
-#%% TWO ADDITIONAL SCORES: PROCESSING SPEED AND OVERALL
+#%% CALCULATE COMPOSITE SCORES - CONTROL GROUP
 
+# Calculates the 3 cognitive domain scores from the fitted PCA model
 Zctrl[pca_names] = Ypca.transform(Zctrl[df_])
 
-Yspd = FactorAnalyzer(method='principal', n_factors=1).fit(Zctrl[tf_])
+# Measure of processing speed:
+# take the 1st Prinicipal Component across timing-related features (tf_)
+Yspd = FactorAnalyzer(
+	method='principal', 
+	n_factors=1,
+	rotation=None).fit(Zctrl[tf_])
 Zctrl['processing_speed'] = Yspd.transform(Zctrl[tf_])
 
+# Overall measure across CBS battery:
+# the average of all 12 task z-scores (rescaled to have SD=1.0) 
 Zctrl['overall'] = Zctrl[df_].mean(axis=1)
 Yavg_tfm = StandardScaler(with_mean=True, with_std=True).fit(Zctrl[['overall']])
 Zctrl['overall'] = Yavg_tfm.transform(Zctrl[['overall']])
 
 #%% INITIAL EFFECTS OF XCOVARS
+
+# Copy the dataset, because we modify the age variable (mean centre it)
 Zctrl_ = Zctrl.copy()
 Zctrl_.age -= Zctrl_.age.mean()
 
@@ -246,6 +265,9 @@ Xtfm_ = ColumnTransformer([
 Xss = Xtfm.transform(Zctrl[Xcovar])
 Xss = np.c_[Xss, np.ones(Xss.shape[0])]
 Bss = np.dot(pinv(Xss), Zctrl[Yvar])
+
+#%% [markdown]
+# ## COVID+ (2020-21) Dataset
 
 #%% LOAD AND PROCESS COVID COGNITION DATA
 mhvars   = ['GAD2', 'PHQ2']
@@ -340,7 +362,7 @@ print("\n")
 print(covar_data.groupby(['dataset']).agg(['mean', 'std']).T)
 # age_table.to_csv('../tables/continuous_covars.csv')
 
-#%% MENTAL HEALTH?
+#%% GAD-2 & PHQ-2 Summary
 
 n_GAD_flag = (Zcc.GAD2>=3).sum()
 print(f"GAD2 >= 3, N = {n_GAD_flag} ({n_GAD_flag/Zcc.shape[0]*100:.01f}%)")
@@ -496,7 +518,7 @@ f
 Zcc_ = Zcc.copy()
 Zcc[Xcovar] = Xtfm_.transform(Zcc[Xcovar])
 
-#%% HELP FUNCTIONS AND OPTIONS
+#%% HELPER FUNCTIONS AND OPTIONS
 
 comp_columns = ['dR2', 'f2', 'BF10']
 regr_columns = ['B', 'tstat', 'df', 'p_adj', 'CI']
@@ -524,7 +546,7 @@ def styled_df(df):
 	return df.style.format(table_style)
 
 def write_df_to_html(df, fn):
-	with open(f"../tables/{fn}.html", 'w') as wf:
+	with open(f"./tables/{fn}.html", 'w') as wf:
 		wf.write(styled_df(df).render())
 
 table_style = {
@@ -538,6 +560,10 @@ table_style = {
 	'd': '{:.2f}',
 	'BF10': bf_format,
 }
+
+#%% [markdown]
+# ## Health Factors & Socio-Demographic Variables
+
 #%%
 
 r0_regressions, _ = ws.regression_analyses(
@@ -567,8 +593,6 @@ res0 = (r0_regressions
 	.loc[:, column_order]
 )
 
-importlib.reload(wp)
-
 f1_ts = wp.create_stats_figure(
 	res0, 'tstat', 'p_adj', diverging=True, vertline=None, 
 	correction='bonferroni')
@@ -581,7 +605,8 @@ if False:
 	write_df_to_html(res0, 'Table_S4')
 
 styled_df(res0)
-#%%
+#%% PLOTS OF MEAN FACTORS SCORES vs. DEMOGRAPHICS
+
 import plotly.graph_objects as go
 bwmap = wc.create_mpl_cmap(plotly.colors.sequential.gray, alpha=1.0)
 
@@ -632,8 +657,10 @@ iplot(fig)
 if False:
 	fig.write_image('../images/Figure_2.svg')
 
-#%% REGRESSION ANALYSIS OF COGNITIVE SCORES
+#%% [markdown]
+# ## Regress Cognitive Scores on to Health Factor Scores
 
+#%% QQ Plot of Residuals
 adj = 'bonferroni'
 r1_regressions, r1_models = ws.regression_analyses(
 	'%s ~ F1 + F2', comp_scores, Zcc, n_comparisons=15)
@@ -651,8 +678,9 @@ qq_f = wp.qq_plots(qq_res, qq_nms,
 
 iplot(qq_f)
 if write_images:
-	qq_f.write_image('../images/r1_qq.svg')
+	qq_f.write_image('./images/r1_qq.svg')
 
+#%% Results
 r1_comparisons = ws.compare_models([
 	{'name': 'F1',
 		'h0': '%s ~ 1 + F2', 
@@ -681,7 +709,7 @@ if False:
 
 styled_df(r1_ttests[ttest_columns])
 
-#%% STATS FIGURES
+#%% Results Summary
 
 plot_cols = ['tstat', 'p_adj', 'BF10']
 renamer = {'group': 'COVID+ vs CTRL'}
@@ -693,9 +721,6 @@ res1_fig = (
 	.loc[idx[comp_scores, :], :]
 	.rename(renamer)
 )
-#%%
-import importlib
-importlib.reload(wp)
 
 f1_ts = wp.create_stats_figure(
 	res1_fig, 'tstat', 'p_adj', diverging=True, vertline=2,
@@ -708,14 +733,13 @@ if False:
 	f1_bf.savefig('../images/Figure_5b.svg')
 
 
-#%% PLOTS OF MEANS
+#%% Plots of Means
 f1_edges = np.array([-np.Inf, *Zcc['F1'].quantile(q=np.array([1,2])/3).values, np.Inf])
 f2_edges = np.array([-np.Inf, *Zcc['F2'].quantile(q=np.array([1,2])/3).values, np.Inf])
 labels = ["worse", "average", "better"]
 Zcc['F1_bin'] = pd.cut(Zcc['F1'], bins=f1_edges, labels=labels)
 Zcc['F2_bin'] = pd.cut(Zcc['F2'], bins=f2_edges, labels=labels)
 
-importlib.reload(wp)
 
 bar_args = {
 	'range_y': [-0.7, 0.35],
@@ -757,6 +781,10 @@ if False:
 	f3a.write_image('../images/Figure_3a.svg')
 	f3b.write_image('../images/Figure_3b.svg')
 
+
+#%% [markdown]
+# ## Subgroup Analysis Based on Health Factor Bins
+
 #%% COMPARE F1 SUBGROUPS TO CONTROL
 r3a_ttests = {}
 for grp, grp_data in Zcc.groupby('F1_bin'):
@@ -786,6 +814,9 @@ if True:
 	write_df_to_html(r3b_ttests[ttest_columns], 'Table_S5b')
 styled_df(r3b_ttests[ttest_columns])
 
+#%% [markdown]
+# ## Supplementary Analysis - Include Covariates
+# - They've already been regressed out, but let's try anyways.
 
 #%% INCLUDE COVARIATES IN REGRESSION MODELS
 
@@ -813,6 +844,9 @@ if False:
 
 styled_df(res1b_[column_order])
 
+#%% [markdown]
+# ## Subgroup Analyses - Hospitalised vs Non-Hospitalised Cases
+
 #%% COMPARE MEANS OF HEALTH MEASURES THAT MAKE UP F1
 import wildpython as wp
 
@@ -835,8 +869,6 @@ Xhm = Xhm[['hospital_stay']].join(
 	pd.DataFrame(
 		HMtfm.transform(Xhm[hms]), 
 		index=Xhm.index, columns=wsk.get_ct_feature_names(HMtfm)))
-
-#%%
 
 f, m = wp.means_plot(
 	Xhm, hms, 'measure', group='hospital_stay', group_order=['Yes', 'No'],
@@ -892,10 +924,10 @@ f5b, m = wp.means_plot(
 iplot(f5b)
 
 if True:
-	f5a.write_image('../images/Figure_5a.svg')
-	f5b.write_image('../images/Figure_5b.svg')
+	f5a.write_image('./images/Figure_5a.svg')
+	f5b.write_image('./images/Figure_5b.svg')
 
-#%% COMPARE HOSPITALISED GROUPS
+#%% COMPARE HOSPITALISED GROUPS (T-TESTS)
 
 r5a_ttests = (ws
 	.two_sample_ttests('hospital_stay', comp_scores+fnames, Zcc, n_comparisons=7)
@@ -905,6 +937,8 @@ r5a_ttests = (ws
 
 if True:
 	write_df_to_html(r5a_ttests[ttest_columns], 'Table_S7')
+
+styled_df(r5a_ttests[ttest_columns])
 
 #%% DIFFERENCE FROM CONTROLS FOR NON-/HOSPITALISED GROUPS
 r5b_ttests = {}
@@ -922,10 +956,8 @@ if write_tables:
 
 styled_df(r5b_ttests[ttest_columns])
 
-
-# %% INCLUDE HOSPITALIZATION IN MODELS
+# %% INCLUDE HOSPITALIZATION IN REGRESSION MODELS
 Zcc['hospital_stay'] = OneHotEncoder(drop=['No']).fit_transform(Zcc[['hospital_stay']]).todense()
-#%%
 
 r4_regressions, _ = ws.regression_analyses(
 	'%s ~ F1 + F2 + hospital_stay', 
@@ -964,25 +996,10 @@ if False: # REDO
 	r4_t_fig.savefig('../images/Figure_7a.svg')
 	r4_b_fig.savefig('../images/Figure_7b.svg')
 
+#%% [markdown]
+# ## Other Exploratory Analyses
 
-#%% Interactions BY F1 and F2?
-
-r4 = ws.compare_models([
-	{'name': 'Age X F1',
-		'h0': '%s ~ 1 + F1', 
-		'h1': '%s ~ 1 + F1 + F1:age'}, 
-	{'name': 'Sex X F1',
-		'h0': '%s ~ 1 + F1', 
-		'h1': '%s ~ 1 + F1 + F1:sex'},
-	{'name': 'Age X F2',
-		'h0': '%s ~ 1 + F2', 
-		'h1': '%s ~ 1 + F2 + F2:age'}, 
-	{'name': 'Sex X F2',
-		'h0': '%s ~ 1 + F2', 
-		'h1': '%s ~ 1 + F2 + F2:sex'}],
-	Zcc, comp_scores, smf.ols)
-
-#%% OTHER VARS?
+#%% CORRELATIONS BETWEEN OTHER VARIABLES AND COGNITIVE SCORES?
 
 vars_ = fnames+mhvars+Xcovar+['WHO_COVID_severity']#+sf36vars
 
@@ -1008,7 +1025,6 @@ if False:
 # %% QQ-PLOTS OF SCORES, BY HOSPITALISATION
 
 from wildpython import wild_plots as wp
-importlib.reload(wp)
 
 qq = np.empty([len(comp_scores), 2], dtype='object')
 qt = np.empty([len(comp_scores), 2], dtype='object')
@@ -1025,11 +1041,14 @@ iplot(qq_hosp)
 
 if False:
 	qq_hosp.write_image('../images/qq_hosp.svg')
+
+#%% [markdown]
+# ## Sankey Diagram
+# - This needs to be cleaned up.
+
 # %%
 
-
 import itertools
-import matplotlib as mp
 
 groupers = ['symptoms',
 			'hospital_stay', 'supplemental_O2_hospital',
@@ -1064,17 +1083,8 @@ for p in good_paths:
 
 good_cnts = [cnt[i] for i in good_i]
 
-#%%
 cats = CC.questionnaire.WHO_cats
 ncat = len(cats)
-
-import matplotlib
-colormap = matplotlib.colors.ListedColormap(px.colors.sequential.Viridis)
-colors = colormap(np.linspace(0, 1, ncat))
-colors[:, -1] = 0.8
-
-colors = [f"rgba({','.join([str(x) for x in c])})" for c in colors]
-colormap = dict(zip(cats, colors[0:ncat]))
 
 nodes = [f"{groupers[i]}_{o}" for i,
 		 opt in enumerate(opts) for o in opt if o != "NA"]
@@ -1116,7 +1126,6 @@ for j, p in enumerate(good_paths):
 			if p[ti] != "NA":
 				src = f"{groupers[i]}_{p[i]}"
 				trg = f"{groupers[ti]}_{p[ti]}"
-				print(f"{src}->{trg}")
 				l['source'].append(node_vals.index(src))
 				l['target'].append(node_vals.index(trg))
 				l['label'].append(lab[j])
@@ -1127,7 +1136,6 @@ for j, p in enumerate(good_paths):
 				ll['target'].append(trg)
 				ll['value'].append(good_cnts[j])
 
-# %%
 from floweaver import *
 
 cats = CC.questionnaire.WHO_cats
@@ -1168,7 +1176,6 @@ order = [
 	['end']
 ]
 
-
 bundles = [
 	# Bundle('start', 'end', waypoints=['hospital', 'ICU'], flow_selection="(hospital_stay == 'Yes')"),
 	Bundle('start', 'end', waypoints=['hospital', 'daily'], flow_selection="(hospital_stay == 'No')"),
@@ -1176,20 +1183,8 @@ bundles = [
 	Bundle('start', 'end', waypoints=['hospital', 'o2', 'ICU'], flow_selection="(ICU_stay == 'No')"),
 ]
 
-# nodes['start'].partition = 
-# nodes['end'].partition = 
-# nodes['daily'].partition = Partition.Simple('target', ['daily_routine_Yes', 'daily_routine_No'])
-
-
-#%%
-
 sdd = SankeyDefinition(nodes, bundles, order, flow_partition=target)
 weave(sdd, ll, palette=colormap).to_widget(width=1000, align_link_types=True).auto_save_svg('test.svg')
 
-# %%
-counts = []
-for g in groupers:
-	counts.append(
-		Zcc_[g].value_counts()#*100/Zcc_.shape[0]
-	)
-# %%
+
+# %% [markdown]
