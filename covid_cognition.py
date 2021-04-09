@@ -43,7 +43,6 @@ from cbsdata.sleep_study import SleepStudy as SS
 # Plotly for plotting
 import plotly
 import plotly.express as px
-from plotly.offline import iplot, init_notebook_mode
 
 # Display options for in this notebook
 pd.set_option('display.max_rows', 100)
@@ -86,8 +85,6 @@ def set_column_names(df, new_names):
 
 write_tables = False
 write_images = False
-
-init_notebook_mode()
 
 #%% [markdown]
 # ## Control (Pre-Pandemic) Dataset
@@ -197,7 +194,7 @@ fig = chord_plot(
 	cscale_name='Picnic', width=700, height=350, threshold=0.20)
 fig.write_image('./images/score_PCA.svg')
 
-iplot(fig)
+fig.show(renderer="png")
 
 #%%
 # Generate a table of task to composite score loadings
