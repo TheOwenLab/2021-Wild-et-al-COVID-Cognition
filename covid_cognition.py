@@ -1184,7 +1184,7 @@ bundles = [
 ]
 
 sdd = SankeyDefinition(nodes, bundles, order, flow_partition=target)
-weave(sdd, ll, palette=colormap).to_widget(width=1000, align_link_types=True).auto_save_svg('test.svg')
+weave(sdd, ll, palette=colormap).to_widget(width=1000, align_link_types=True).auto_save_svg('./images/sankey.svg')
 
 
 # %% [markdown]
