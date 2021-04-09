@@ -172,6 +172,9 @@ Zctrl[af_] = Ytfm.transform(Zctrl[af_].values)
 # ### Factor Analysis (PCA) of CBS Test Scores (Control Group)
 
 #%%
+# Perform a PCA of the 12 primary CBS measures specifying 3 components and a
+# varimax rotation. These choices are based on previous work with these tests:
+# Hampshire et al (2012), Wild et al (2018).
 Ypca = FactorAnalyzer(
 	method='principal',
 	n_factors=3, 
@@ -179,6 +182,9 @@ Ypca = FactorAnalyzer(
 
 # I know the scores turn out in this order....
 pca_names = ['STM', 'reasoning', 'verbal']
+
+# Build dataframes of correlations, loadings, eigenvalues etc. for use in the
+# figure and table.
 loadings = pd.DataFrame(
 	Ypca.loadings_, index=cbs.test_names(), columns=pca_names)
 var_corrs = pd.DataFrame(
@@ -208,8 +214,9 @@ loadings = (pd
 loadings.to_csv('./tables/pca_loadings.csv')
 loadings
 
-#%% CALCULATE COMPOSITE SCORES - CONTROL GROUP
-
+#%% [markdown]
+# ### Calculate Composite Cognitive Scores (Control Group)
+#%% 
 # Calculates the 3 cognitive domain scores from the fitted PCA model
 Zctrl[pca_names] = Ypca.transform(Zctrl[df_])
 
@@ -227,8 +234,10 @@ Zctrl['overall'] = Zctrl[df_].mean(axis=1)
 Yavg_tfm = StandardScaler(with_mean=True, with_std=True).fit(Zctrl[['overall']])
 Zctrl['overall'] = Yavg_tfm.transform(Zctrl[['overall']])
 
-#%% INITIAL EFFECTS OF XCOVARS
-
+#%% [markdown]
+# ## Relationship between socio-demographic variables and cognitive performance.
+# - Estimate these from the control dataset using linear regression
+#%%
 # Copy the dataset, because we modify the age variable (mean centre it)
 Zctrl_ = Zctrl.copy()
 Zctrl_.age -= Zctrl_.age.mean()
@@ -239,6 +248,7 @@ test_scores = df_
 Yvar = test_scores+comp_scores
 expr = ws.build_model_expression(Xcovar)
 
+# Generate a summary figure to show significant (p < 0.05) effects.
 r, _ = ws.regression_analyses(expr, Yvar, Zctrl_)
 f = wp.create_stats_figure(
 		r.drop('Intercept', level='contrast', axis=0),
@@ -247,6 +257,8 @@ f = wp.create_stats_figure(
 #%% ESTIMATE EFFECTS OF COVARIATES
 from sklearn.preprocessing import PolynomialFeatures
 
+# Estimate and save the betas so we can correct the COVID+ data for the same
+# variables. Note that we model age using linear+quadratic terms.
 age_tfm = Pipeline(steps=[
 	('center', StandardScaler(with_mean=True, with_std=False)),
 	('poly', PolynomialFeatures(degree=2, include_bias=False)),
@@ -274,8 +286,9 @@ Bss = np.dot(pinv(Xss), Zctrl[Yvar])
 
 #%% [markdown]
 # ## COVID+ (2020-21) Dataset
-
-#%% LOAD AND PROCESS COVID COGNITION DATA
+# ### Load & Process COVID Cognition Data
+#%%
+# Variables to keep track of
 mhvars   = ['GAD2', 'PHQ2']
 subjvars = ['subjective_memory', 'baseline_functioning']
 sf36vars = list(CC.questionnaire.SF36_map.keys())
@@ -368,8 +381,9 @@ print("\n")
 print(covar_data.groupby(['dataset']).agg(['mean', 'std']).T)
 # age_table.to_csv('../tables/continuous_covars.csv')
 
-#%% GAD-2 & PHQ-2 Summary
-
+#%% [markdown]
+# ### GAD-2 & PHQ-2 Summary
+#%% 
 n_GAD_flag = (Zcc.GAD2>=3).sum()
 print(f"GAD2 >= 3, N = {n_GAD_flag} ({n_GAD_flag/Zcc.shape[0]*100:.01f}%)")
 
@@ -414,7 +428,10 @@ if do_demo_plots:
 	f.update_yaxes(title="# of Subjects")
 	iplot(f)
 
-#%% PROCESS THE HEALTH MEASURES DATA
+#%% [markdown]
+# ## Process Health Measures Data
+#%%
+# The variables we are looking at
 fvars = mhvars + subjvars + sf36vars + ['WHO_COVID_severity', 'days_since_test']
 fdata = Zcc[fvars].copy().dropna()
 
@@ -505,27 +522,25 @@ if False:
 f = chord_plot(
 		loadings, fdata0[var_order].corr(), 
 		width=800, height=350, cscale_name='Picnic', threshold=0.20)
-iplot(f)
+f.show(renderer='png')
 
 if False:
 	f.write_image(f"../images/HM_factor_{rotation}.svg")
 
-
-Zall = pd.concat([Zcc, Zctrl], axis=0, keys=['CC', 'CTRL'], names=['study'])
-
 #%%
-
+# Correlations between health measures (same as shown in the above chord plot)
 f = wp.correlogram(fdata0, subset=var_order, mask_diag=True, thresh=0.2)
 if False:
 	f.write_image(f"../images/HM_correlogram.svg")
 f
 
-#%% RELATIONSHIP BETWEEN FACTOR SCORES AND COVARIATES?
-Zcc_ = Zcc.copy()
-Zcc[Xcovar] = Xtfm_.transform(Zcc[Xcovar])
+#%%
+# Concatenate the COVID+ and Control datasets for subsetquent comparions 
+# betweeb groups
+Zall = pd.concat([Zcc, Zctrl], axis=0, keys=['CC', 'CTRL'], names=['study'])
 
-#%% HELPER FUNCTIONS AND OPTIONS
-
+#%% 
+# Helper variables for processing the statistics tables
 comp_columns = ['dR2', 'f2', 'BF10']
 regr_columns = ['B', 'tstat', 'df', 'p_adj', 'CI']
 ttest_columns = ['diff', 'tstat', 'df', 'p_adj', 'CI', 'BF10']
@@ -568,9 +583,10 @@ table_style = {
 }
 
 #%% [markdown]
-# ## Health Factors & Socio-Demographic Variables
-
+# ## Relationships Between Factor Scores and Covariates
 #%%
+Zcc_ = Zcc.copy()
+Zcc[Xcovar] = Xtfm_.transform(Zcc[Xcovar])
 
 r0_regressions, _ = ws.regression_analyses(
 	'%s ~ age + sex + post_secondary + SES', fnames, Zcc, n_comparisons=8)
@@ -611,7 +627,8 @@ if False:
 	write_df_to_html(res0, 'Table_S4')
 
 styled_df(res0)
-#%% PLOTS OF MEAN FACTORS SCORES vs. DEMOGRAPHICS
+#%% 
+# Plots of Mean Factors Scores vs. Covariates
 
 import plotly.graph_objects as go
 bwmap = wc.create_mpl_cmap(plotly.colors.sequential.gray, alpha=1.0)
@@ -657,8 +674,8 @@ fig.update_layout(
 	showlegend=False,
 	margin={'l': 75, 'b': 40, 't': 20, 'r': 20},
 	width=650, height=275)
-f
-iplot(fig)
+
+fig.show(renderer='png')
 
 if False:
 	fig.write_image('../images/Figure_2.svg')
@@ -666,7 +683,8 @@ if False:
 #%% [markdown]
 # ## Regress Cognitive Scores on to Health Factor Scores
 
-#%% QQ Plot of Residuals
+#%% 
+# QQ Plot of Residuals
 adj = 'bonferroni'
 r1_regressions, r1_models = ws.regression_analyses(
 	'%s ~ F1 + F2', comp_scores, Zcc, n_comparisons=15)
@@ -682,11 +700,14 @@ qq_f = wp.qq_plots(qq_res, qq_nms,
 	layout_args = {'width': 400, 'height': 400}
 )
 
-iplot(qq_f)
 if write_images:
 	qq_f.write_image('./images/r1_qq.svg')
 
-#%% Results
+qq_f.show(renderer='png')
+
+#%% 
+# Perform regressions,  model comparisons, and t-tests
+OUTDATED_IGNORE=1
 r1_comparisons = ws.compare_models([
 	{'name': 'F1',
 		'h0': '%s ~ 1 + F2', 
@@ -746,11 +767,11 @@ labels = ["worse", "average", "better"]
 Zcc['F1_bin'] = pd.cut(Zcc['F1'], bins=f1_edges, labels=labels)
 Zcc['F2_bin'] = pd.cut(Zcc['F2'], bins=f2_edges, labels=labels)
 
-
 bar_args = {
 	'range_y': [-0.7, 0.35],
 	'labels': {'mean': 'SD Units'},
 }
+
 layout_args = {
 	'xaxis': {
 		'title': None, 
@@ -774,14 +795,14 @@ f3a, _ = wp.means_plot(
 	group_color_sequence=grayscale_map,
 	bar_args=bar_args, layout_args=layout_args 
 )
-iplot(f3a)
+f3a.show(renderer='png')
 
 f3b, _ = wp.means_plot(
 	Zcc, comp_scores, 'score', group='F2_bin',
 	group_color_sequence=grayscale_map,
 	bar_args=bar_args, layout_args=layout_args 
 )
-iplot(f3b)
+f3b.show(renderer='png')
 
 if False:
 	f3a.write_image('../images/Figure_3a.svg')
@@ -791,7 +812,8 @@ if False:
 #%% [markdown]
 # ## Subgroup Analysis Based on Health Factor Bins
 
-#%% COMPARE F1 SUBGROUPS TO CONTROL
+#%% 
+# Compare groups in F1 bins to controls
 r3a_ttests = {}
 for grp, grp_data in Zcc.groupby('F1_bin'):
 	Zall = pd.concat([grp_data, Zctrl], keys=['CC', 'SS'], names=['study'])
@@ -806,7 +828,8 @@ if True:
 
 styled_df(r3a_ttests[ttest_columns])
 
-#%% COMPARE F2 SUBGROUPS TO CONTROL
+#%%
+# Compare groups in F2 bins to controls
 r3b_ttests = {}
 for grp, grp_data in Zcc.groupby('F2_bin'):
 	Zall = pd.concat([grp_data, Zctrl], keys=['CC', 'SS'], names=['study'])
@@ -824,8 +847,8 @@ styled_df(r3b_ttests[ttest_columns])
 # ## Supplementary Analysis - Include Covariates
 # - They've already been regressed out, but let's try anyways.
 
-#%% INCLUDE COVARIATES IN REGRESSION MODELS
-
+#%% 
+# Include covariates in the model expression(s)
 r1b_regressions, _ = ws.regression_analyses(
 	'%s ~ F1 + F2 + age + sex + post_secondary + SES', comp_scores, Zcc, n_comparisons=15)
 
@@ -853,7 +876,8 @@ styled_df(res1b_[column_order])
 #%% [markdown]
 # ## Subgroup Analyses - Hospitalised vs Non-Hospitalised Cases
 
-#%% COMPARE MEANS OF HEALTH MEASURES THAT MAKE UP F1
+#%% 
+# Compare means of measures that make up F1
 import wildpython as wp
 
 hms = sf36vars+subjvars+mhvars+['WHO_COVID_severity']
@@ -886,7 +910,7 @@ f, m = wp.means_plot(
 		'width': 650, 'height': 350},
 	group_tests=True)
 
-iplot(f)
+f.show(rendere='png')
 
 bar_args = {
 	'range_y': [-0.8, 0.4],
@@ -917,7 +941,7 @@ f5a, m = wp.means_plot(
 	bar_args=bar_args, layout_args=layout_args,
 )
 
-iplot(f5a)
+f5a.show(renderer='png')
 
 layout_args['showlegend'] = False
 layout_args['width'] = 200
@@ -927,14 +951,14 @@ f5b, m = wp.means_plot(
 	group_color_sequence=grayscale_map,
 	bar_args=bar_args, layout_args=layout_args,
 )
-iplot(f5b)
+f5b.show(renderer='png')
 
 if True:
 	f5a.write_image('./images/Figure_5a.svg')
 	f5b.write_image('./images/Figure_5b.svg')
 
-#%% COMPARE HOSPITALISED GROUPS (T-TESTS)
-
+#%% 
+# Compare Hospitalised Groups (T-Tests)
 r5a_ttests = (ws
 	.two_sample_ttests('hospital_stay', comp_scores+fnames, Zcc, n_comparisons=7)
 	.droplevel('contrast')
@@ -946,7 +970,8 @@ if True:
 
 styled_df(r5a_ttests[ttest_columns])
 
-#%% DIFFERENCE FROM CONTROLS FOR NON-/HOSPITALISED GROUPS
+#%% 
+# Difference from Controls from Non-/Hospitalised Groups
 r5b_ttests = {}
 for grp, grp_data in Zcc.groupby('hospital_stay'):
 	Zall = pd.concat([grp_data, Zctrl], keys=['CC', 'SS'], names=['study'])
@@ -962,7 +987,8 @@ if write_tables:
 
 styled_df(r5b_ttests[ttest_columns])
 
-# %% INCLUDE HOSPITALIZATION IN REGRESSION MODELS
+# %% 
+# INCLUDE HOSPITALIZATION IN REGRESSION MODELS
 Zcc['hospital_stay'] = OneHotEncoder(drop=['No']).fit_transform(Zcc[['hospital_stay']]).todense()
 
 r4_regressions, _ = ws.regression_analyses(
@@ -1028,10 +1054,8 @@ if False:
 	f5_ts.savefig('../images/Figure_S3a.svg')
 	f5_bf.savefig('../images/Figure_S3b.svg')
 
-# %% QQ-PLOTS OF SCORES, BY HOSPITALISATION
-
-from wildpython import wild_plots as wp
-
+# %% 
+# QQ-PLOTS OF SCORES, BY HOSPITALISATION
 qq = np.empty([len(comp_scores), 2], dtype='object')
 qt = np.empty([len(comp_scores), 2], dtype='object')
 for ir, score in enumerate(comp_scores):
@@ -1043,7 +1067,7 @@ for ir, score in enumerate(comp_scores):
 qq_hosp = wp.qq_plots(qq, qt, layout_args={
 	'height': 800, 'width': 500
 })
-iplot(qq_hosp)
+qq_hosp.show(renderer='png')
 
 if False:
 	qq_hosp.write_image('../images/qq_hosp.svg')
@@ -1136,8 +1160,6 @@ for j, p in enumerate(good_paths):
 				l['target'].append(node_vals.index(trg))
 				l['label'].append(lab[j])
 				l['value'].append(good_cnts[j])
-				l['color'].append(colormap[lab[j]])
-
 				ll['source'].append(src)
 				ll['target'].append(trg)
 				ll['value'].append(good_cnts[j])
