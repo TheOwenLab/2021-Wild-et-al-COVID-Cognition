@@ -1,7 +1,6 @@
-#%%
-
 #%% [markdown]
 # ## Setup
+
 #%%
 # Standard libraries
 import pandas as pd
@@ -44,7 +43,7 @@ from cbsdata.sleep_study import SleepStudy as SS
 # Plotly for plotting
 import plotly
 import plotly.express as px
-from plotly.offline import iplot
+from plotly.offline import iplot, init_notebook_mode
 
 # Display options for in this notebook
 pd.set_option('display.max_rows', 100)
@@ -88,11 +87,13 @@ def set_column_names(df, new_names):
 write_tables = False
 write_images = False
 
+init_notebook_mode()
+
 #%% [markdown]
 # ## Control (Pre-Pandemic) Dataset
-
-#%% LOAD AND PROCESS CONTROL DATA
-
+# ### Load & Preprocess Data
+#%% 
+# Loads the control dataset from the (private) SS library
 Yctrl = SS.score_data(datestamp="2021-01-28")
 
 # List columns corresponding to "timing" (RT) features
@@ -170,12 +171,16 @@ Ytfm = Pipeline(steps=[
 # Z-scores the control test scores (all features)
 Zctrl[af_] = Ytfm.transform(Zctrl[af_].values)
 
-#%% FACTOR ANALYSIS OF THE CBS TEST SCORES - CONTROL GROUP
+#%% [markdown]
+# ### Factor Analysis (PCA) of CBS Test Scores (Control Group)
+
+#%%
 Ypca = FactorAnalyzer(
 	method='principal',
 	n_factors=3, 
 	rotation='varimax').fit(Zctrl[df_])
 
+# I know the scores turn out in this order....
 pca_names = ['STM', 'reasoning', 'verbal']
 loadings = pd.DataFrame(
 	Ypca.loadings_, index=cbs.test_names(), columns=pca_names)
@@ -186,12 +191,16 @@ eigen_values = pd.DataFrame(
 pct_variance = pd.DataFrame(
 	Ypca.get_factor_variance()[1]*100, index=pca_names, columns=['% variance']).T
 
+# Generates and displays the chord plot to visualize the factors
 fig = chord_plot(
 	loadings.copy(), var_corrs.copy(), 
 	cscale_name='Picnic', width=700, height=350, threshold=0.20)
-iplot(fig)
 fig.write_image('./images/score_PCA.svg')
 
+iplot(fig)
+
+#%%
+# Generate a table of task to composite score loadings
 loadings = (pd
 	.concat([loadings, eigen_values, pct_variance], axis=0)
 	.join(Yctrl_stats[df_]
