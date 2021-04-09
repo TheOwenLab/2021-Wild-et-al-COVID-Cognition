@@ -200,7 +200,7 @@ fig = chord_plot(
 	cscale_name='Picnic', width=700, height=350, threshold=0.20)
 fig.write_image('./images/score_PCA.svg')
 
-fig.show(renderer="png")
+fig.show(renderer="png", width=700, height=350)
 
 #%%
 # Generate a table of task to composite score loadings
@@ -522,7 +522,7 @@ if False:
 f = chord_plot(
 		loadings, fdata0[var_order].corr(), 
 		width=800, height=350, cscale_name='Picnic', threshold=0.20)
-f.show(renderer='png')
+f.show(renderer='png', width=800, height=350)
 
 if False:
 	f.write_image(f"../images/HM_factor_{rotation}.svg")
@@ -675,7 +675,7 @@ fig.update_layout(
 	margin={'l': 75, 'b': 40, 't': 20, 'r': 20},
 	width=650, height=275)
 
-fig.show(renderer='png')
+fig.show(renderer='png', width=650, height=275)
 
 if False:
 	fig.write_image('../images/Figure_2.svg')
@@ -703,7 +703,7 @@ qq_f = wp.qq_plots(qq_res, qq_nms,
 if write_images:
 	qq_f.write_image('./images/r1_qq.svg')
 
-qq_f.show(renderer='png')
+qq_f.show(renderer='png', width=400, height=400)
 
 #%% 
 # Perform regressions,  model comparisons, and t-tests
@@ -795,14 +795,14 @@ f3a, _ = wp.means_plot(
 	group_color_sequence=grayscale_map,
 	bar_args=bar_args, layout_args=layout_args 
 )
-f3a.show(renderer='png')
+f3a.show(renderer='png', width=400, height=275)
 
 f3b, _ = wp.means_plot(
 	Zcc, comp_scores, 'score', group='F2_bin',
 	group_color_sequence=grayscale_map,
 	bar_args=bar_args, layout_args=layout_args 
 )
-f3b.show(renderer='png')
+f3b.show(renderer='png', width=400, height=275)
 
 if False:
 	f3a.write_image('../images/Figure_3a.svg')
@@ -910,7 +910,7 @@ f, m = wp.means_plot(
 		'width': 650, 'height': 350},
 	group_tests=True)
 
-f.show(rendere='png')
+f.show(rendere='png', width=650, height=350)
 
 bar_args = {
 	'range_y': [-0.8, 0.4],
@@ -941,7 +941,7 @@ f5a, m = wp.means_plot(
 	bar_args=bar_args, layout_args=layout_args,
 )
 
-f5a.show(renderer='png')
+f5a.show(renderer='png', width=400, height=275)
 
 layout_args['showlegend'] = False
 layout_args['width'] = 200
@@ -951,7 +951,7 @@ f5b, m = wp.means_plot(
 	group_color_sequence=grayscale_map,
 	bar_args=bar_args, layout_args=layout_args,
 )
-f5b.show(renderer='png')
+f5b.show(renderer='png', width=200, height=275)
 
 if True:
 	f5a.write_image('./images/Figure_5a.svg')
@@ -1067,7 +1067,7 @@ for ir, score in enumerate(comp_scores):
 qq_hosp = wp.qq_plots(qq, qt, layout_args={
 	'height': 800, 'width': 500
 })
-qq_hosp.show(renderer='png')
+qq_hosp.show(renderer='png', height=800, width=500)
 
 if False:
 	qq_hosp.write_image('../images/qq_hosp.svg')
