@@ -1,5 +1,5 @@
 #%% [markdown]
-# ## Setup
+# ## Seeing through brain fog: disentangling the cognitive, physical, and mental health sequalae of COVID-19. 
 
 #%%
 # Standard libraries
@@ -83,8 +83,16 @@ def set_column_names(df, new_names):
 	df.columns = new_names
 	return df
 
-write_tables = False
-write_images = False
+from IPython.display import SVG
+from os import path
+def save_and_display(figure, file_name):
+	""" Save images in SVG format (for editing/manuscript) then display inside
+		the notebook. Avoids having to have multiple versions of the image, or 
+		multiple ways of displaying images from plotly, etc.
+	"""
+	full_file_name = path.join('.', 'images', 'file_name')
+	figure.write_image(full_file_name)
+	SVG(full_file_name)
 
 #%% [markdown]
 # ## Control (Pre-Pandemic) Dataset
@@ -198,9 +206,11 @@ pct_variance = pd.DataFrame(
 fig = chord_plot(
 	loadings.copy(), var_corrs.copy(), 
 	cscale_name='Picnic', width=700, height=350, threshold=0.20)
-fig.write_image('./images/score_PCA.svg')
 
-fig.show(renderer="png", width=700, height=350)
+save_and_display(fig, 'Figure_1A')
+# fig.write_image('./images/score_PCA.svg')
+# fig
+# fig.show(renderer="png", width=700, height=350)
 
 #%%
 # Generate a table of task to composite score loadings
@@ -251,19 +261,23 @@ expr = ws.build_model_expression(Xcovar)
 # Generate a summary figure to show significant (p < 0.05) effects.
 r, _ = ws.regression_analyses(expr, Yvar, Zctrl_)
 f = wp.create_stats_figure(
-		r.drop('Intercept', level='contrast', axis=0),
-		'tstat', 'p', stat_range=[-10, 10], diverging=5, vertline=5)
+	r.drop('Intercept', level='contrast', axis=0),
+	'tstat', 'p', stat_range=[-10, 10], diverging=5, vertline=5)
 
-#%% ESTIMATE EFFECTS OF COVARIATES
-from sklearn.preprocessing import PolynomialFeatures
-
+#%% 
 # Estimate and save the betas so we can correct the COVID+ data for the same
 # variables. Note that we model age using linear+quadratic terms.
+from sklearn.preprocessing import PolynomialFeatures
+
 age_tfm = Pipeline(steps=[
 	('center', StandardScaler(with_mean=True, with_std=False)),
 	('poly', PolynomialFeatures(degree=2, include_bias=False)),
 ])
 
+# Transform covariates (X) variables specifying:
+#	- age, as a linear and quadratic term (see age_tfm)
+#	- level of education, as a binary variable with 1 = False
+#	- SES growing up, as binary variable with 1 = Below poverty level
 Xtfm = ColumnTransformer([
 	('cont',  age_tfm, ['age']),
 	('c_sex', OneHotEncoder(drop=['Female']), ['sex']),
@@ -271,8 +285,8 @@ Xtfm = ColumnTransformer([
 	('c_ses', OneHotEncoder(drop=['At or above poverty level']), ['SES']),
 ]).fit(Zctrl[Xcovar])
 
-# Another X transformer, but we just mean centre age instead of polynomial
-# expansions.
+# This is an alternative transformer for the covariates that only mean-centres
+# the age variable (instead of quadratic term, like above.)
 Xtfm_ = ColumnTransformer([
 	('cont',  StandardScaler(with_mean=True, with_std=False), ['age']),
 	('c_sex', OneHotEncoder(drop=['Female']), ['sex']),
@@ -280,20 +294,26 @@ Xtfm_ = ColumnTransformer([
 	('c_ses', OneHotEncoder(drop=['At or above poverty level']), ['SES']),
 ]).fit(Zctrl[Xcovar])
 
+# Transform the covariate columns into a numeric matrix
 Xss = Xtfm.transform(Zctrl[Xcovar])
+
+# Add an intercept
 Xss = np.c_[Xss, np.ones(Xss.shape[0])]
+
+# Solve for the the parameters. We'll use these to correct the COVID+ sample
 Bss = np.dot(pinv(Xss), Zctrl[Yvar])
 
 #%% [markdown]
-# ## COVID+ (2020-21) Dataset
+# ## COVID+ Sample
 # ### Load & Process COVID Cognition Data
 #%%
-# Variables to keep track of
+# Placeholder variables instead of typing these every time
 mhvars   = ['GAD2', 'PHQ2']
 subjvars = ['subjective_memory', 'baseline_functioning']
 sf36vars = list(CC.questionnaire.SF36_map.keys())
 severity = ['WHOc']
 
+# Load and process questionnaire data
 print("\nCC Questionnaire:")
 Qcc = (CC.questionnaire.data
 	.rename(columns={'ses': 'SES'})
@@ -303,13 +323,17 @@ Qcc = (CC.questionnaire.data
 	.assign(post_secondary = lambda x: x.education > 'Some university or college, no diploma')
 )
 
+# Convert the "How would you rate your memory?" values to numeric (0-6)
 Qcc.subjective_memory = Qcc.subjective_memory.cat.codes
 
+# Create an alternative WHO COVID severity variable that is: 0-1, 2, or 3+
 Qcc.WHOc = (Qcc.WHOc
 	.map({'0': '0-1', '1': '0-1', '2': '2', '3+': '3+'})
 	.astype("category")
 )
 
+# Load and process the COVID+ sample CBS test scores, dropping any that were
+# collected with an invalid device type.
 print("\nCC Scores:")
 Ycc = (CC.score_data()
 	.pipe(set_column_names, af_)
@@ -321,6 +345,8 @@ Ycc = (CC.score_data()
 	.pipe(report_N, 'drop unsupported devices')
 )
 
+# Combine score and questionnaire data, then chain them through a pipeline
+# to remove datasets based on outliers, etc.
 print("\nCC Dataset:")
 Zcc = (Ycc
 	.join(Qcc, how='left')
@@ -346,7 +372,8 @@ Zcc = (Ycc
 	.pipe(remove_unused_categories)
 )
 
-# Standardizes all score features using the control means and stdevs
+# Standardizes all score features using the transformer that was fitted on the 
+# control sample data (i.e., using the control sample means and SDs, etc.)
 Zcc[af_] = Ytfm.transform(Zcc[af_])
 
 # Calculate the composite scores
@@ -382,7 +409,7 @@ print(covar_data.groupby(['dataset']).agg(['mean', 'std']).T)
 # age_table.to_csv('../tables/continuous_covars.csv')
 
 #%% [markdown]
-# ### GAD-2 & PHQ-2 Summary
+# ### COVID+ Sample: GAD-2 & PHQ-2 Summary
 #%% 
 n_GAD_flag = (Zcc.GAD2>=3).sum()
 print(f"GAD2 >= 3, N = {n_GAD_flag} ({n_GAD_flag/Zcc.shape[0]*100:.01f}%)")
@@ -390,46 +417,8 @@ print(f"GAD2 >= 3, N = {n_GAD_flag} ({n_GAD_flag/Zcc.shape[0]*100:.01f}%)")
 n_PHQ_flag = (Zcc.PHQ2>=3).sum()
 print(f"PHQ2 >= 3, N = {n_PHQ_flag} ({n_PHQ_flag/Zcc.shape[0]*100:.01f}%)")
 
-#%%
-do_demo_plots = False
-if do_demo_plots:
-
-	f = wp.histogram(
-			Zcc, 'age', range(0, 100, 10),
-			layout_args = { 
-				'xaxis': {'tickmode': 'linear', 'tick0': 0, 'dtick': 10 }})
-	iplot(f)
-
-	f = wp.pie_plot(
-			Zcc, 'sex', 
-			marker = {'colors': ['rgb(204, 97, 176)', 'rgb(93, 105, 177)']})
-	iplot(f)
-
-	f = wp.pie_plot(Zcc, 'post_secondary', marker = {'colors': wp.dark2[0:2]})
-	iplot(f)
-
-	x = Zcc[(Zcc.days_since_test > 0)&(Zcc.days_since_test < 300)]
-	f = wp.histogram(
-			x, 'days_since_test', range(0, 270, 30),
-			bar_args = {
-				'color_discrete_sequence': plotly.colors.qualitative.Pastel},
-			layout_args = { 
-				'xaxis': { 'tickmode': 'linear', 'tick0': 0, 'dtick': 30 }})
-	iplot(f)
-
-	c = Zcc.groupby('WHO').agg(['count']).xs('duration', level=0, axis=1)
-	c['WHO Score'] = np.arange(0, 7)
-	f = px.bar(c, x='WHO Score', y='count', color='WHO Score', text='count')
-	f.update_layout(width=350, height=400,
-			margin = {'t': 20, 'r': 10, 'l': 70, 'b': 20},
-			coloraxis_showscale=False)
-	f.update_traces(textfont_size=10)
-	f.update_xaxes(tickvals=c['WHO Score'])
-	f.update_yaxes(title="# of Subjects")
-	iplot(f)
-
 #%% [markdown]
-# ## Process Health Measures Data
+# ## COVID+ Sample: Health Measures
 #%%
 # The variables we are looking at
 fvars = mhvars + subjvars + sf36vars + ['WHO_COVID_severity', 'days_since_test']
@@ -532,7 +521,7 @@ if False:
 f = wp.correlogram(fdata0, subset=var_order, mask_diag=True, thresh=0.2)
 if False:
 	f.write_image(f"../images/HM_correlogram.svg")
-f
+f.show(renderer='png', width=500, height=400)
 
 #%%
 # Concatenate the COVID+ and Control datasets for subsetquent comparions 
@@ -1074,7 +1063,7 @@ if False:
 
 #%% [markdown]
 # ## Sankey Diagram
-# - This needs to be cleaned up.
+# - This needs to be seriously cleaned up.
 
 # %%
 
@@ -1116,36 +1105,8 @@ good_cnts = [cnt[i] for i in good_i]
 cats = CC.questionnaire.WHO_cats
 ncat = len(cats)
 
-nodes = [f"{groupers[i]}_{o}" for i,
-		 opt in enumerate(opts) for o in opt if o != "NA"]
 
-node_dict = dict(zip(nodes,[
- '[N] symptoms',
- '[Y] symptoms',
- '[N] hospital',
- '[Y] hospital',
- '[?] supplemental_O2',
- '[N] supplemental_O2',
- '[Y] supplemental_O2',
- '[N] ICU',
- '[Y] ICU',
- '[N] ventilator',
- '[Y] ventilator',
- '[N] daily_routine',
- '[Y] daily_routine',
- 'WHO 0',
- 'WHO 1',
- 'WHO 2',
- 'WHO 3',
- 'WHO 4',
- 'WHO 5',
- 'WHO 6']))
-
-node_vals = list(node_dict.keys())
-node_keys = list(node_dict.values())
-
-l = {'source': [], 'target': [], 'value': [], 'color': [], 'label': []}
-ll = {'source': [], 'target': [], 'value': []}
+links = {'source': [], 'target': [], 'value': []}
 j = 0
 for j, p in enumerate(good_paths):
 	for i,v in enumerate(p[:-1]):
@@ -1156,13 +1117,9 @@ for j, p in enumerate(good_paths):
 			if p[ti] != "NA":
 				src = f"{groupers[i]}_{p[i]}"
 				trg = f"{groupers[ti]}_{p[ti]}"
-				l['source'].append(node_vals.index(src))
-				l['target'].append(node_vals.index(trg))
-				l['label'].append(lab[j])
-				l['value'].append(good_cnts[j])
-				ll['source'].append(src)
-				ll['target'].append(trg)
-				ll['value'].append(good_cnts[j])
+				links['source'].append(src)
+				links['target'].append(trg)
+				links['value'].append(good_cnts[j])
 
 from floweaver import *
 
@@ -1177,11 +1134,10 @@ colors[:, -1] = 0.1
 colors = [matplotlib.colors.to_hex(c) for c in colors]
 colormap = dict(zip(cats, colors[0:ncat]))
 
-ll = pd.DataFrame(good_paths, columns=groupers)
-ll['value'] = good_cnts
-ll = ll.rename(columns={'symptoms': 'source', 'WHO': 'target'})
-ll[ll=='NA'] = np.nan
-ll
+links = pd.DataFrame(good_paths, columns=groupers)
+links['value'] = good_cnts
+links = links.rename(columns={'symptoms': 'source', 'WHO': 'target'})
+links[links=='NA'] = np.nan
 
 target = Partition.Simple('target', CC.questionnaire.WHO_cats)
 
@@ -1212,7 +1168,12 @@ bundles = [
 ]
 
 sdd = SankeyDefinition(nodes, bundles, order, flow_partition=target)
-weave(sdd, ll, palette=colormap).to_widget(width=1000, align_link_types=True).auto_save_svg('./images/sankey.svg')
+(weave(sdd, links, palette=colormap)
+	.to_widget(width=1000, align_link_types=True)
+	.auto_save_svg('./images/sankey.svg'))
 
+#%%
+from IPython.display import SVG
+SVG('./images/sankey.svg')
 
 # %% [markdown]
