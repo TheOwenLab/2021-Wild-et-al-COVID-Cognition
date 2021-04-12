@@ -31,30 +31,29 @@ from factor_analyzer.factor_analyzer import \
 	calculate_bartlett_sphericity, \
 	calculate_kmo
 
-# Custom tools for working with CBS data
+# Custom tools for working with CBS data.
+# Non-vital stuff like names of tests, etc.
 import cbspython as cbs		
 
-# My own collection of hacked-together tools for doing stats, generating 
-# figures, manipulating dataframes, etc.
-# from wildpython import \
-# 	wild_plots as wp, \
-# 	wild_statsmodels as ws, \
-# 	wild_sklearn as wsk, \
-# 	wild_colors as wc, \
-# 	chord_plot
-
+# Custom functions and helpers for doing stats, plots, etc.
+# These are located alongside this script.
 import lib_stats as ws
 import lib_plots as wp
 import lib_colours as wc
 from lib_chord import chord_plot
+from lib_utils import \
+	report_N, remove_unused_categories, set_column_names, \
+	save_and_display_figure, save_and_display_table
 
-# Helper packages that load parse and load the study data.
+# Helper packages that load the study data.
 from cbsdata.covid_brain_study import CovidBrainStudy as CC
-from cbsdata.sleep_study import SleepStudy as SS
+from cbsdata.sleep_study import SleepStudy as SS # this is the CTRL dataset
 
 # Plotly for plotting
 import plotly
 import plotly.express as px
+
+from IPython.display import SVG, display
 
 # Display options for in this notebook
 pd.set_option('display.max_rows', 100)
@@ -63,48 +62,6 @@ pd.set_option('display.float_format', lambda x: '%.4f' % x)
 np.set_printoptions(precision=3)
 
 idx = pd.IndexSlice
-
-def remove_unused_categories(df):
-	""" Helper function to remove unused categories from all categorical columns
-		in a dataframe. For use in chained pipelines.
-	"""
-	for col in df.select_dtypes('category').columns:
-		df[col] = df[col].cat.remove_unused_categories()
-	return df
-
-nprev = 0
-def report_N(df, label='', reset_count=False):
-	""" Helper function to report the size of a dataframe in a pipeline chain.
-		Optionally, will print a label. Useful for logging/debugging. If 
-		reset_count is true, then the global counter (used to calculate change
-		in sample size) is reset to zero.
-	"""
-	global nprev
-	if reset_count:
-		nprev = 0
-	ncurrent = df.shape[0]
-	delta = ncurrent - nprev
-	print(f"N = {ncurrent:5d}, {delta:+6d} ({label})")
-	nprev = df.shape[0]
-	return df
-
-def set_column_names(df, new_names):
-	""" Another helper function that sets the columns of a dataframe to the 
-		supplied new names (a list-like of names).
-	"""
-	df.columns = new_names
-	return df
-
-from IPython.display import SVG, display
-from os import path
-def save_and_display_figure(figure, file_name):
-	""" Save images in SVG format (for editing/manuscript) then display inside
-		the notebook. Avoids having to have multiple versions of the image, or 
-		multiple ways of displaying images from plotly, etc.
-	"""
-	full_file_name = path.join('.', 'images', f"{file_name}.svg")
-	figure.write_image(full_file_name)
-	display(SVG(full_file_name))
 
 #%% [markdown]
 # ## Control (Pre-Pandemic) Dataset
@@ -545,59 +502,20 @@ save_and_display_figure(f, 'Figure_1B')
 
 #%%
 # Correlations between health measures (same as shown in the above chord plot)
-f = wp.correlogram(fdata0, subset=var_order, mask_diag=True, thresh=0.2)
+f = wp.correlogram(fdata0, subset=var_order, mask_diag=True)
 save_and_display_figure(f, 'Figure_S2')
 
 #%%
-# Concatenate the COVID+ and Control datasets for subsequent comparions 
-# betweeb groups
+# Concatenate the COVID+ and Control datasets for subsequent comparisons 
+# between groups
 Zall = pd.concat([Zcc, Zctrl], axis=0, keys=['CC', 'CTRL'], names=['study'])
 
 #%% 
-# Helper variables for processing the statistics tables
-comp_columns = ['dR2', 'f2', 'BF10']
-regr_columns = ['B', 'tstat', 'df', 'p_adj', 'CI']
-ttest_columns = ['diff', 'tstat', 'df', 'p_adj', 'CI', 'BF10']
+# Defines columns that will be used in various stats tables
+comp_columns = ['dR2', 'f2', 'BF10']					# model comparison stats
+regr_columns = ['B', 'tstat', 'df', 'p_adj', 'CI']		# regression parameters
+ttest_columns = ['diff', 'tstat', 'df', 'p_adj', 'CI', 'BF10'] # t-test stats
 column_order = regr_columns + comp_columns
-
-def pval_format(p):
-	if p < 0.001:
-		return "< 0.001"
-	else:
-		return f"{p:.03f}"
-
-def bf_format(bf):
-	if isinstance(bf, str):
-		bf = float(bf)
-	if bf > 1000:
-		return "> 1000"
-	else:
-		return f"{bf:.02f}"
-
-def ci_format(ci, precision=3):
-	return f"({ci[0]:.{precision}f}, {ci[1]:.{precision}f})"
-
-def styled_df(df, return_it=False):
-	styled_table = df.style.format(table_style)
-	display(styled_table)
-	if return_it:
-		return styled_table
-
-def save_and_display_table(df, fn):
-	with open(f"./tables/{fn}.html", 'w') as wf:
-		wf.write(styled_df(df, return_it=True).render())
-
-table_style = {
-	'B': '{:.2f}',
-	'tstat': '{:.2f}',
-	'df': '{:.2f}',
-	'p_adj': pval_format,
-	'CI': ci_format,
-	'dR2': '{:.3f}',
-	'f2': '{:.3f}',
-	'd': '{:.2f}',
-	'BF10': bf_format,
-}
 
 #%% [markdown]
 # ## Relationships Between Factor Scores and Covariates
@@ -605,9 +523,14 @@ table_style = {
 Zcc_ = Zcc.copy()
 Zcc[Xcovar] = Xtfm_.transform(Zcc[Xcovar])
 
+# Build and estimate regression models for each health factor score
+# (fnames) using the expression: '~ age + sex + post_secondary + SES'.
 r0_regressions, _ = ws.regression_analyses(
 	'%s ~ age + sex + post_secondary + SES', fnames, Zcc, n_comparisons=8)
 
+# Then, we perform model comparisons where the null or reduced model (h0) does
+# not contain the variable of interest, whereas the alternative model (h1) DOES.
+# This function returns Bayes factors, effect sizes, likelihood ratios, etc.
 r0_comparisons = ws.compare_models([
 	{ 'name': 'age',
 		'h0': '%s ~ sex + post_secondary + SES', 

@@ -16,7 +16,6 @@ plt.rcParams.update({'font.size': 10})
 rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
 plt.rcParams['svg.fonttype'] = 'none'
 
-
 _LINE_COLOUR = 'rgb(16, 16, 16)'
 def plotly_template():
     return {

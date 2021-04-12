@@ -10,17 +10,17 @@ As COVID-19 cases exceed hundreds of millions globally, it is clear that many su
 ### 1. covid_cognition.ipynb
 A viewable notebook of the entire analysis, including embedded images. Represents the most recent version of the analysis, including all tables, figures, and numbers. If you are unable to view the notebook in GitHub by clicking the file above (e.g., you get the _"Sorry, something went wrong."_ message), trying opening it at [nbviewer](https://nbviewer.jupyter.org/).
 
-### 2. covid_cognition.py
+### 2. ./covid_cognition/covid_cognition.py
 The actual python script that I run to perform the analysis. The notebook file (above) is generated from the output of this script.
 
-### 3. lib_stats.py
+### 3. ./covid_cognition/lib_stats.py
 Contains res-usable functions for performing statistical analyses. They exist in this file, instead of in the notebook, to increase code readability, re-useability, and maintainability.
 
-### 4. lib_plots
+### 4. ./covid_cognition/lib_plots
 Similar to #3, but for making plots.
 
-### 5. lib_colours
+### 5. ./covid_cognition/lib_colours
 Again, helper functions and constants for defining and working with colours.
 
-### 6. lib_chord
+### 6. ./covid_cognition/lib_chord
 Contains code for generating the chord plots used to visualize the factor analyses (Figure 1) in this study.
