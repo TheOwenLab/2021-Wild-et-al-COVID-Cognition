@@ -1,5 +1,11 @@
 #%% [markdown]
 # # Seeing through brain fog: disentangling the cognitive, physical, and mental health sequalae of COVID-19. 
+# ### Conor J. Wild*, Loretta Norton, David K. Menon, David A. Ripsman, Richard H. Swartz, & Adrian M. Owen
+# #### Corresponding Author: cwild@uwo.ca, conorwild@gmail.com
+
+#%% [markdown]
+# ## Introduction
+# - I will fill this in.
 
 #%%
 # Standard libraries
@@ -30,12 +36,17 @@ import cbspython as cbs
 
 # My own collection of hacked-together tools for doing stats, generating 
 # figures, manipulating dataframes, etc.
-from wildpython import \
-	wild_plots as wp, \
-	wild_statsmodels as ws, \
-	wild_sklearn as wsk, \
-	wild_colors as wc, \
-	chord_plot
+# from wildpython import \
+# 	wild_plots as wp, \
+# 	wild_statsmodels as ws, \
+# 	wild_sklearn as wsk, \
+# 	wild_colors as wc, \
+# 	chord_plot
+
+import lib_stats as ws
+import lib_plots as wp
+import lib_colours as wc
+from lib_chord import chord_plot
 
 # Helper packages that load parse and load the study data.
 from cbsdata.covid_brain_study import CovidBrainStudy as CC
@@ -464,7 +475,7 @@ fdata0 = (pd
 	.DataFrame(
 		fdata_tfm.transform(fdata),
 		index=fdata.index,
-		columns=wsk.get_ct_feature_names(fdata_tfm))
+		columns=ws.get_ct_feature_names(fdata_tfm))
 	.rename(columns=var_rename)
 	.loc[:, var_order]
 )
@@ -894,7 +905,7 @@ HMtfm = ColumnTransformer([
 Xhm = Xhm[['hospital_stay']].join(
 	pd.DataFrame(
 		HMtfm.transform(Xhm[hms]), 
-		index=Xhm.index, columns=wsk.get_ct_feature_names(HMtfm)))
+		index=Xhm.index, columns=ws.get_ct_feature_names(HMtfm)))
 
 f, m = wp.means_plot(
 	Xhm, hms, 'measure', group='hospital_stay', group_order=['Yes', 'No'],
