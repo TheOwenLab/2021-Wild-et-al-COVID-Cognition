@@ -8,7 +8,7 @@ As COVID-19 cases exceed hundreds of millions globally, it is clear that many su
 ## Files
 
 ### 1. covid_cognition.ipynb
-A viewable notebook of the entire analysis, including embedded images. Represents the most recent version of the analysis, including all tables, figures, and numbers.
+A viewable notebook of the entire analysis, including embedded images. Represents the most recent version of the analysis, including all tables, figures, and numbers. If you are unable to view the notebook in GitHub by clicking the file above (e.g., you get the _"Sorry, something went wrong."_ message), trying opening it at [nbviewer](https://nbviewer.jupyter.org/).
 
 ### 2. covid_cognition.py
 The actual python script that I run to perform the analysis. The notebook file (above) is generated from the output of this script.
