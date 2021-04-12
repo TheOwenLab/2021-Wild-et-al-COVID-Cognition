@@ -7,6 +7,7 @@ As COVID-19 cases exceed hundreds of millions globally, it is clear that many su
 
 ## Preprint
 https://www.researchsquare.com/article/rs-373663/v1
+Note, some of the tables in the preprint linked here need some help / reformatting. For better quality, check out the PDFs included in the preprint directory here.
 
 ## Files
 
