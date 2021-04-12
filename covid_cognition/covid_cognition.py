@@ -808,8 +808,6 @@ save_and_display_table(res1b_, 'Table_S6')
 
 #%% 
 # Compare means of measures that make up F1
-import wildpython as wp
-
 hms = sf36vars+subjvars+mhvars+['WHO_COVID_severity']
 Zcc['hospital_stay'] = Zcc['hospital_stay'].cat.remove_unused_categories()
 Xhm = Zcc.loc[:, hms+['hospital_stay']]
