@@ -1008,6 +1008,7 @@ groupers = ['symptoms',
 			'ventilator', 'daily_routine', 'WHO']
 
 q2 = Qcc.loc[Zcc.index, groupers].copy()
+q2['WHO'] = q2['WHO'].astype('category')
 q2['WHO'] = q2['WHO'].cat.add_categories('NA')
 q2 = q2.fillna('NA')
 q2.symptoms = q2.symptoms.astype('category')
