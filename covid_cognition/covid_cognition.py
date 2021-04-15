@@ -46,8 +46,8 @@ from lib_utils import \
 	save_and_display_figure, save_and_display_table
 
 # Helper packages that load the study data.
-from cbsdata.covid_brain_study import CovidBrainStudy as CC
-from cbsdata.sleep_study import SleepStudy as SS # this is the CTRL dataset
+from cbsdata.covid_cognition import CovidCognition as CC
+from cbsdata.control_study import ControlStudy as CS # this is the CTRL dataset
 
 # Plotly for plotting
 import plotly
