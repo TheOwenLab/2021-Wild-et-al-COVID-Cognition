@@ -33,7 +33,7 @@ from factor_analyzer.factor_analyzer import \
 
 # Custom tools for working with CBS data.
 # Non-vital stuff like names of tests, etc.
-import cbspython as cbs		
+import lib_cbs as cbs		
 
 # Custom functions and helpers for doing stats, plots, etc.
 # These are located alongside this script.
@@ -68,7 +68,7 @@ idx = pd.IndexSlice
 # ### Load & Preprocess Data
 #%% 
 # Loads the control dataset from the (private) SS library
-Yctrl = SS.score_data(datestamp="2021-01-28")
+Yctrl = CS.score_data
 
 # List columns corresponding to "timing" (RT) features
 tf  = cbs.timing_features(exclude=['spatial_planning']) # SP does not have one
@@ -83,15 +83,12 @@ af  = list(Yctrl.columns)
 af_ = cbs.abbrev_features(af)
 				
 Xcovar = ['age', 'sex', 'post_secondary', 'SES']
-correct_cols = [f"{test.abbrev}_num_correct" for _, test in cbs.TESTS.items()]
 
 # Loads the control dataset (Sleep Study, 2017)
 print("\nControl Scores:")
 Yctrl = (Yctrl
 	.pipe(set_column_names, af_)
 	.reset_index('device_type')
-	.groupby('user')
-	.first()
 	.pipe(report_N, "initial dataset", reset_count=True)
 	.query('~(device_type in ["BOT", "CONSOLE", "MOBILE"])')
 	.pipe(report_N, "drop unsupported devices")
@@ -102,7 +99,7 @@ Yctrl = (Yctrl
 # Loads and organises the control questionnaire dataset
 # Have to rename a few columns to match them up to the new study data
 print("\nControl Questionnaires:")
-Qctrl = (SS
+Qctrl = (CS
 	.questionnaire.data[['gender', 'age', 'education', 'SES_growing_up']]
 	.reset_index().astype({'user': str})
 	.set_index('user')
@@ -121,7 +118,6 @@ Zctrl = (Yctrl
 	.query('sex in ["Male", "Female"]')
 	.pipe(report_N, 'filter age')
 	.dropna()
-	.query('&'.join([f"({c}>0)" for c in correct_cols]))
 	.pipe(report_N, 'drop missing data')
 	.pipe(ws.filter_df, subset=af_, sds=[6], drop=True)
 	.pipe(report_N, '6 SD filter')
@@ -309,7 +305,7 @@ Qcc.WHOc = (Qcc.WHOc
 # Load and process the COVID+ sample CBS test scores, dropping any that were
 # collected with an invalid device type.
 print("\nCC Scores:")
-Ycc = (CC.score_data()
+Ycc = (CC.score_data
 	.pipe(set_column_names, af_)
 	.reset_index('device_type')
 	.groupby('user')
