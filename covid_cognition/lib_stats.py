@@ -216,6 +216,30 @@ def corrected_alpha_from(**correction_args):
 
 def adjust_pvals(results, 
         n_comparisons=None, adj_across=None, adj_type=None, alpha=None):
+    """
+
+    Args:
+        results (Pandas dataframe): a results dataframe that has a column of 
+            p-values, and a multi-index with two levels: 'contrast' and
+            'score'.
+
+    Optional Args:
+        alpha (float): the alpha (e.g., 0.05) for determining statistical
+            significance. You can etiher specify this here, or leave it and
+            specify a method for correcting formultiple comparisons (see
+            next two parameters). If set, this option takes priority.
+        n_comparisons: like alpha, but instead it's the number of comparisons.
+        adj_across (string): when doing an automatic correction for multiple
+            comparisons, do you correct across DVs ("scores"), IVs ("contrasts")
+            or all of them ("all")? 
+        adj_type (string): the method for correcting for multiple comparisons,
+            should be one of the options available in <insert function here>.
+            For example 'fdr_bh', 'sidak', 'bonferroni', etc.
+
+    Returns:
+        a Pandas dataframe that  is like original results dataframe, but with an
+        additional column 'p_adj' that has the corrected p-values.
+    """
 
     if n_comparisons is not None:
         p_adj = results['p'] * n_comparisons
@@ -257,17 +281,7 @@ def regression_analyses(formula, DVs, data, IVs=None, **correction_args):
             will be estimated for each DV.
         IVs (list-like): the independent variables to do statistics on. If 
             None then all variables in the formula are tested. (default: None)
-        alpha (float): the alpha (e.g., 0.05) for determining statistical
-            significance. You can etiher specify this here, or leave it and
-            specify a method for correcting formultiple comparisons (see
-            next two parameters). If set, this option takes priority.
-        n_comparisons: like alpha, but instead it's the number of comparisons.
-        adj_across (string): when doing an automatic correction for multiple
-            comparisons, do you correct across DVs ("scores"), IVs ("contrasts")
-            or all of them ("all")? 
-        adj_type (string): the method for correcting for multiple comparisons,
-            should be one of the options available in <insert function here>.
-            For example 'fdr_bh', 'sidak', 'bonferroni', etc.
+        **correction args: keyword arguments that get passed to adust_pvals()
 
     """
     results = []
@@ -300,25 +314,26 @@ def regression_analyses(formula, DVs, data, IVs=None, **correction_args):
 def two_sample_ttests(
         group_var, DVs, data, paired=False, tails='two-sided',
         test_name='Mean Difference', **correction_args):
-    """ Insert description here.
+
+    """ Performs a series of two-sample t-tests, collecting all the statistics
+        and returning a nicely formatted dataframe of results.
 
     Args:
         group_var (string): The variables that will be used to group/split
             the dataset. Bust have only two levels.
-        DVs (list-like): the names of dependent variables. One regression model
-            will be estimated for each DV.
-        alpha (float): the alpha (e.g., 0.05) for determining statistical
-            significance. You can etiher specify this here, or leave it and
-            specify a method for correcting formultiple comparisons (see
-            next two parameters). If set, this option takes priority.
-        adj_across (string): when doing an automatic correction for multiple
-            comparisons, do you correct across DVs ("scores"), IVs ("contrasts")
-            or all of them ("all")? 
-        adj_type (string): the method for correcting for multiple comparisons,
-            should be one of the options available in <insert function here>.
-            For example 'fdr_bh', 'sidak', 'bonferroni', etc.
+        DVs (list-like): the names of dependent variables. One t-test will be 
+            done for each element of this list.
+        data (Pandas dataframe): the raw data frame with variables as columns
+            and rows as observations.
+    
+    Optional Args:
+        paired (boolean): if True, performs paired-sample t-tests.
+        tails (string): specifies "two-sided" or "one-sided" t-tests.
+        test_name (string): the label for the test difference column.
+        **correction args: keyword arguments that get passed to adust_pvals()
 
     """
+    
     from pingouin import ttest
     grp_data = [d for _, d in data.groupby(group_var)]
     assert(len(grp_data)==2)
@@ -354,6 +369,26 @@ def two_sample_ttests(
 
 
 def filter_df(df, sds = [6,4], subset=None, drop=False):
+    """ Filters a dataframe (column-wise) by setting values more than X standard
+        deviations (SDs) away from the mean to np.nan. Each column is considered
+        in isolation.
+
+    Args:
+        df (Pandas dataframe): a dataframe with columns as variables and rows 
+            as observations. By default all columns of the dataframe are
+            filtered.
+    
+    Optional Args:
+        sds (array/list-like): Threshold of X # of SDs away from the mean. If
+            there are multiple values (like the default [6,4]) then filtering is
+            done in multiple sequential passes where the mean and SD are
+            re-calculated on each pass.
+        subset (array/list-like): a subset of columns in the dataframe to filter.
+        drop (boolean): if True, rows with outliers are dropped from the 
+            dataframe before being returning. if False, outliers are just 
+            masked as np.nan in the original dataframe. 
+    """
+
     if subset is None:
         subset = df.columns
     
