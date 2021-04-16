@@ -1,7 +1,13 @@
-# Someday I will clean this up!
-# hacked together using bits and pieces from:
+# -----------------------------------------------------------------------------
+# This lib file contains custom code for generating the "chord" plots that
+# make up Figures 1A & 1B in the manuscript. The code in here should be cleaned
+# up and better documented, but I haven't had time for that yet. For example,
+# there are colour-related functions in here that exist elsewhere. Note, this
+# script has been hacked together using bits and pieces from:
 # - https://plotly.com/python/v3/filled-chord-diagram/
 # - https://plotly.com/python/v3/chord-diagram/
+# -----------------------------------------------------------------------------
+# cwild 2021-04-15
 
 import pandas as pd
 import numpy as np

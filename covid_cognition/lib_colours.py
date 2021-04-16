@@ -1,7 +1,17 @@
+# -----------------------------------------------------------------------------
+# This lib file contains helper functions for working with colours in plotly
+# and matplotlib. Again, this should be cleaned up but it's low on the 
+# priority list, for now.
+#
+# Include custom colourmaps sequences generated from
+#   https://colorbrewer2.org/
+#
+# -----------------------------------------------------------------------------
+# cwild 2021-04-15
+
 from _plotly_utils.colors import unlabel_rgb
 import numpy as np
 
-# https://colorbrewer2.org/#type=diverging&scheme=PRGn&n=6
 _DIVERGING_C1 = [
     (64,0,75),
     (118,42,131),
@@ -139,4 +149,3 @@ D2_CMAP = create_mpl_cmap(_DIVERGING_C2)
 D3_CMAP = create_mpl_cmap(_DIVERGING_C3)
 D4_CMAP = create_mpl_cmap(_DIVERGING_C4)
 
-# BR_CMAP = create_mpl_cmap(plotly_cmap('diverging', 'RdBu_r'))

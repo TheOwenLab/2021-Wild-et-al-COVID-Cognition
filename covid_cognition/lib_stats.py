@@ -1,3 +1,15 @@
+# -----------------------------------------------------------------------------
+# This lib file contains helper functions for doing many statistics. Rather
+# than having all that code within a notebook, resuable functions are placed in 
+# here.
+#
+# See:
+#  - https://plotly.com/python/
+#  - https://matplotlib.org/
+#
+# -----------------------------------------------------------------------------
+# cwild 2021-04-15
+
 import pandas as pd
 import numpy as np
 import itertools
@@ -105,6 +117,10 @@ def likelihood_ratio_test_calc(h0, h1):
     return (lrstat, lr_pvalue, lrdf)
 
 def r2_from(estimated_model):
+    """ Get the R-squared statistic from a fitted model. In most cases this is
+        simply the 'rsquared' parameters, but in some cases like with a logit
+        model we need the pseudo-r-squared.
+    """
     r2 = getattr(estimated_model, 'rsquared', None)
     if r2 is None:
         r2 = getattr(estimated_model, 'prsquared', None)

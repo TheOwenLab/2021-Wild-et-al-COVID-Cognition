@@ -1,3 +1,15 @@
+# -----------------------------------------------------------------------------
+# This lib file contains helper functions for creating plots and figures. Rather
+# than having all that code within a notebook, resuable functions are placed in 
+# here. It's a mix of Plotly and Matplotlib functions.
+#
+# See:
+#  - https://plotly.com/python/
+#  - https://matplotlib.org/
+#
+# -----------------------------------------------------------------------------
+# cwild 2021-04-15
+
 import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
@@ -16,6 +28,7 @@ plt.rcParams.update({'font.size': 10})
 rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
 plt.rcParams['svg.fonttype'] = 'none'
 
+# Default layout for any plots created with Plotly
 _LINE_COLOUR = 'rgb(16, 16, 16)'
 def plotly_template():
     return {
@@ -61,7 +74,7 @@ def plotly_template():
 def create_stats_figure(
         results, stat_name, p_name, alpha=0.05, log_stats=True, 
         diverging=False, stat_range=None, correction=None, vertline=4, 
-        marker_color=None, reverse=False
+        marker_color=None
     ):
     """ Creates a matrix figure to summarize multple tests/scores. Each cell 
         represents a contrast (or model comparison) for a specific effect (rows)
@@ -81,8 +94,14 @@ def create_stats_figure(
         log_stats (boolean): Should we take the logarithm of statistic values 
             before creating the image? Probably yes, if there is a large 
             variance in value across tests and effects.
+        diverging (boolean): Are the stat values diverging, like a t-test, or 
+            not (like F-stat). Determines the colour scales, etc.
+        stat_range (list-like): upper and lower limits of the statistic range.
         correction (string): indicates how the alpha was corrected (e.g., FDR 
             or bonferroni) so the legend can be labelled appropriately.
+        vertline (integer): Where to place the vertical white line that
+            separates columns.
+        marker_color (any kind of colour type): the colour for the markers.
             
     Returns:
         A matplotlib figure.
@@ -159,25 +178,33 @@ def create_stats_figure(
 
 def create_bayes_factors_figure(results, log_stats=True, 
         vertline=None, cmap=None, cell_scale=0.6, suppress_h0=False):
-    """ Creates a matrix figure to summarize Bayesian stats for multiple scores & tests.
-        Each cell indicates the Bayes Factor (BF associated with a model comparison) for 
-        a specific effect (rows) for a given score (columns). Also draws symbols on cells
-        to indicate the interpretation of that BF.
+    """ Creates a matrix figure to summarize Bayesian stats for multiple scores
+        & tests. Each cell indicates the Bayes Factor (BF associated with a
+        model comparison) for  a specific effect (rows) for a given score 
+        (columns). Also draws symbols on cells to indicate the interpretation of
+        that BF.
         
     Args:
-        results (Pandas dataframe): a dataframe that contains the statistics to display. Should
-            be a rectangular dataframe with tests as rows and effects as columns (i.e., the 
-            transpose of the resulting image). The dataframe index and column labels are used
-            as labels for the resulting figure.
-        log_stats (boolean): Should we take the logarithm of BF values before creating 
-            the image? Probably yes, if there is a large variance in value across scores and
-            effects.
+        results (Pandas dataframe): a dataframe that contains the statistics to
+            display. Should be a rectangular dataframe with tests as rows and 
+            effects as columns (i.e., the  transpose of the resulting image). 
+            The dataframe index and column labels are used as labels for the 
+            resulting figure.
+        log_stats (boolean): Should we take the logarithm of BF values before
+            creating the image? Probably yes, if there is a large variance in 
+            value across scores and effects.
+        vert_line (integer): where to place the vertical white line that 
+            separates subset of columns in the matrix figure.
+        cmap (colourmap): You can override the default colour map.
+        cell_scale (float): for sizing the cells.
+        suppress_h0 (boolean): if True, markers will not be shown on cells that
+            have a Bayes Factor in support of H0. This is just intended to 
+            reduce visual clutter.
             
     Returns:
         A matplotlib figure
     
     """
-
     
     score_index = results.index.unique('score')
     contrast_index = results.index.unique('contrast')
@@ -252,9 +279,47 @@ def means_plot(
         bar_args={}, layout_args={}, trace_args={},
         group=None, group_order=None, 
         group_color_sequence=px.colors.sequential.Plasma,
-        group_tests=False, bar_tests=False, bar_correction='group',
+        group_tests=False
     ):
+    """ Plots the means of columns of a dataframe, split by a grouping variable.
+        The x-axis will have collections (groups) of bars, where each group 
+        corresponds to a single measure (IV), and each bar in the group is
+        one value of the grouping variable.
 
+        This plotting functionality builds upon Plotly's Express "Bar" plot
+        https://plotly.com/python/bar-charts/
+        
+    Required Args:
+        df (Pandas dataframe): a dataframe that contains the data to be plotted.
+            columns are dependent variables (e.g., scores) and independent
+            variables (e.g., group)
+        vars (list-like): The variables to be plotted, e.g., a list of DVs. 
+            Each element of this list will correspond to a group of bars in the
+            final figure.
+        vars_name (string): What do you call the collection of variables to
+            be plotted? For example "Test Scores". I think this ends up as the
+            x-axis title.
+
+    Optional Args:
+        bar_args (dict): formatting options for bars that get passed along to
+            Plotly express.
+        layout_args (dict): formatting options related to layout that get 
+            passed along to Plotly. Anything specified in this dict overrides
+            the default layout options specified at the top of this file.
+        trace_args (dict):  formatting arguments applied to the Plotly traces.
+        group (string): The name of the grouping variable.
+        group_order (list): The order, left to right, that bars within a group
+            should be ordered (and the legend, too).
+        group_color_sequence (colour-like object): the colour sequence for
+            levels of the he grouping variable.
+        group_tests (boolean): if True, peforms F-tests (uncorrected) to test
+            for differences between the levels of the grouping variable, for 
+            each variable. THese are uncorrected stats.
+            
+    Returns:
+        A Plotly figure
+    
+    """
     stats = ['mean', 'std', 'count']
     order = {vars_name: vars}
     if group is None:
@@ -309,7 +374,32 @@ def means_plot(
     return f, means
 
 def qq_plots(qq_results, titles, marker_size=5, lims=[-4,4], layout_args={}):
-    """ Assumes a A x B matrix of results from a statsmodels probplot function.
+    """ Creates QQ plots from the results of a SciPy probplot:
+            https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.probplot.html
+
+        Basically, creates a scatter plot for each QQ result, and arranges them
+        in a MxN matrix of subplots.
+            https://plotly.com/python/line-and-scatter/
+            https://plotly.com/python-api-reference/generated/plotly.subplots.make_subplots.html
+
+        
+    Required Args:
+        qq_results (ND-array): an 2D MxN array of results from probplot, where
+            each element corresponds to the analysis of a single variable. The
+            arrangement of these results maps on to the layout of the subplots
+            in the figure.
+        title (ND-array): Names for each subplot. This should have the same
+            dimensions as qq_results.
+
+    Optional Args:
+        marker_size (numeric): Size of the datapoint markers in the scatter
+            plot.
+        lims (list-like, 2 elements): threshold range (-x to +x).
+        layout_args (dict): layout options to override the defaults.
+            
+    Returns:
+        A Plotly figure
+    
     """
     from plotly.subplots import make_subplots
     assert(isinstance(qq_results, np.ndarray))

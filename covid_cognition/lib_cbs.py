@@ -1,3 +1,12 @@
+# -----------------------------------------------------------------------------
+# This is a stub file that provides necessary funtionaloity from a custom Python
+# package created for working with CBS data. Rather than providing all the 
+# source code for that package, which is a bit overkill for using a few utility
+# functions, I stripped out the bits required for this study and posted them 
+# in here.
+# -----------------------------------------------------------------------------
+# cwild 2021-04-15
+
 import numpy as np
 import pandas as pd
 import re
