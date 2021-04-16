@@ -1,6 +1,6 @@
 # Seeing through brain fog: disentangling the cognitive, physical, and mental health sequelae of COVID-19.
 
-#### Conor J. Wild<sup>1,2*</sup>, Loretta Norton<sup>1,3</sup>, David K. Menon<sup>4</sup>, David A. Ripsman<sup>5</sup>, Richard H. Swartz<sup>6+</sup>, & Adrian M. Owen<sup>1,7+</sup>
+#### [Conor J. Wild](cwild@uwo.ca)<sup>1,2*</sup>, Loretta Norton<sup>1,3</sup>, David K. Menon<sup>4</sup>, David A. Ripsman<sup>5</sup>, Richard H. Swartz<sup>6+</sup>, & Adrian M. Owen<sup>1,7+</sup>
 
 1.	The Brain & Mind Institute, Western University, London, Canada
 2.	Physiology and Pharmacology, Western University, London, Canada
