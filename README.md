@@ -47,7 +47,7 @@ Contains the frozen list of python packages (and their versions) used in this da
 
 1. Install the required packages: `pip3 install -r requirements.txt`
 
-1. Download the data files (links to come), place them in the `./data/` folder in the root of the repo.
+1. Download the [data files](https://dataverse.scholarsportal.info/dataset.xhtml?persistentId=doi:10.5683/SP2/ZQR9QQ) and place them in the `./data/` folder in the root of the repo.
 
 1. Run the script `./covid_cognition/covid_cognition.py`
 
