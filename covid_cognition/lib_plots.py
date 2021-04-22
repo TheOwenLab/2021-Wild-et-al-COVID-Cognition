@@ -16,8 +16,8 @@ import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 
-from lib_stats import f_1way_pval
-from lib_colours import D1_CMAP, D2_CMAP, D3_CMAP, D4_CMAP
+from .lib_stats import f_1way_pval
+from .lib_colours import D1_CMAP, D2_CMAP, D3_CMAP, D4_CMAP
 
 idx = pd.IndexSlice
 
