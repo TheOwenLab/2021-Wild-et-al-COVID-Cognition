@@ -27,17 +27,21 @@ Note, some of the tables in the preprint linked here need some help / reformatti
 ### covid_cognition.ipynb
 A viewable Python notebook of the entire analysis, including embedded images. It represents the most recent version of the analysis, including all tables, figures, and numbers. If you are unable to view the notebook in GitHub by clicking the file above (e.g., you get the _"Sorry, something went wrong."_ message), trying opening it at [nbviewer](https://nbviewer.jupyter.org/github/TheOwenLab/2021-Wild-et-al-COVID-Cognition/blob/master/covid_cognition.ipynb?flush_cache=True).
 
+###  covid_cognition.ipy
+The executable analysis script used to generate the notebook.
+
+### ./cbs_data/
+A subpackage for loading data from this study. Download data files from the [repository](https://doi.org/10.5683/SP2/ZQR9QQ), and place them in this `./cbs_data/data`.
+
 ### ./covid_cognition/
-This folder contains all the custom source code written for, and needed to recreate, all analyses in this study.
+A subpackage that contains miscellaneous helpers and functions for performing statistics, generating figures, etc.
+
+### requirements.txt
+Contains the frozen list of python packages (and their versions) used in this data analysis.
 
 ### ./preprint/
 Contains PDF files of the manuscript preprint.
 
-### ./data/
-Download the two .CSV files from the [repository](https://doi.org/10.5683/SP2/ZQR9QQ), and place them in this folder.
-
-### requirements.txt
-Contains the frozen list of python packages (and their versions) used in this data analysis.
 
 ## Running This Analysis
 
@@ -47,7 +51,7 @@ Contains the frozen list of python packages (and their versions) used in this da
 
 1. Install the required packages: `pip3 install -r requirements.txt`
 
-1. Download the [data files](https://dataverse.scholarsportal.info/dataset.xhtml?persistentId=doi:10.5683/SP2/ZQR9QQ) and place them in the `./data/` folder in the root of the repo.
+1. Download the [data files](https://dataverse.scholarsportal.info/dataset.xhtml?persistentId=doi:10.5683/SP2/ZQR9QQ) and place them in the `./cbs_data/data/` folder.
 
 1. Run the script `./covid_cognition/covid_cognition.py`
 
