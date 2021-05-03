@@ -53,6 +53,6 @@ Contains PDF files of the manuscript preprint.
 
 1. Download the [data files](https://dataverse.scholarsportal.info/dataset.xhtml?persistentId=doi:10.5683/SP2/ZQR9QQ) and place them in the `./cbs_data/data/` folder.
 
-1. Run the script `./covid_cognition/covid_cognition.py`
+1. Run the script `./covid_cognition.py`
 
 #
