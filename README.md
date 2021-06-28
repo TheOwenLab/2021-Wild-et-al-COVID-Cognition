@@ -10,7 +10,7 @@
 6.	Department of Medicine (Neurology), Hurvitz Brain Sciences Program, Sunnybrook HSC, University of Toronto, Toronto, Canada
 7.	Department of Psychology, Western University, London, Canada
 
-## NOTE: This repository is still currently under construction, expect significant changes over the next weeks.
+## v0.5 - Revisions (1st round)
 
 ## Abstract
 As COVID-19 cases exceed hundreds of millions globally, it is clear that many survivors face cognitive challenges and prolonged symptoms. However, important questions about the cognitive impacts of COVID-19 remain unresolved. In the present online study, 485 volunteers who reported having had a confirmed COVID-positive test completed a comprehensive cognitive battery and an extensive questionnaire. This group performed significantly worse than pre-pandemic controls on cognitive measures of reasoning, verbal, and overall performance, and processing speed, but not short-term memory – suggesting domain-specific deficits. We identified two distinct factors underlying health measures: one varying with physical symptoms and illness severity, and one with mental health. Crucially, cognitive deficits were correlated with physical symptoms, but not mental health, and were evident even in cases that did not require hospitalisation. These findings suggest that the subjective experience of “long COVID” or “brain fog” relates to a combination of physical symptoms and cognitive deficits.
