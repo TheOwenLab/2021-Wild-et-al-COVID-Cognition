@@ -19,7 +19,7 @@ class ControlStudyQuestionnaire(Questionnaire):
     @property
     def map_(self):
         return {
-            'gender': ('gender', QuestionType.CATEGORICAL),
+            'sex': ('sex', QuestionType.CATEGORICAL),
             'education': ('education', QuestionType.CATEGORICAL, ["None", "High School Diploma", "Bachelor's Degree", "Master's Degree", "Doctoral or Professional Degree"]),
             'age': ('age', QuestionType.NUMERIC),
             'SES_growing_up': ('question_8', QuestionType.CATEGORICAL),

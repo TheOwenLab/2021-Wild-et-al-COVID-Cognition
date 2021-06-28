@@ -39,7 +39,7 @@ import covid_cognition.lib_colours as wc
 from covid_cognition.lib_chord import chord_plot
 from covid_cognition.lib_utils import \
 	report_N, remove_unused_categories, set_column_names, \
-	save_and_display_figure, save_and_display_table
+	save_and_display_figure, save_and_display_table, tuckersCC
 
 # Helper packages that load the study data.
 from cbs_data.covid_cognition import CovidCognition as CC
@@ -58,6 +58,8 @@ pd.set_option('display.float_format', lambda x: '%.4f' % x)
 np.set_printoptions(precision=3)
 
 idx = pd.IndexSlice
+
+save_all = False
 
 #%% [markdown]
 # ## Control (Pre-Pandemic) Dataset
@@ -96,10 +98,10 @@ Yctrl = (Yctrl
 # Have to rename a few columns to match them up to the new study data
 print("\nControl Questionnaires:")
 Qctrl = (CS
-	.questionnaire.data[['gender', 'age', 'education', 'SES_growing_up']]
+	.questionnaire.data[['sex', 'age', 'education', 'SES_growing_up']]
 	.reset_index().astype({'user': str})
 	.set_index('user')
-	.rename(columns={'gender': 'sex', 'SES_growing_up': 'SES'})
+	.rename(columns={'SES_growing_up': 'SES'})
 	.assign(post_secondary = lambda x: x.education >= "Bachelor's Degree")
 	.pipe(report_N, "initial dataset", reset_count=True)
 )
@@ -144,7 +146,7 @@ Zctrl[af_] = Ytfm.transform(Zctrl[af_].values)
 # Perform a PCA of the 12 primary CBS measures specifying 3 components and a
 # varimax rotation. These choices are based on previous work with these tests:
 # Hampshire et al (2012), Wild et al (2018).
-Ypca = FactorAnalyzer(
+pca_ctrl = FactorAnalyzer(
 	method='principal',
 	n_factors=3, 
 	rotation='varimax').fit(Zctrl[df_])
@@ -154,45 +156,46 @@ pca_names = ['STM', 'reasoning', 'verbal']
 
 # Build and collect dataframes that will be used for figures and table
 # generation. First, the loadings.
-loadings = pd.DataFrame(
-	Ypca.loadings_, index=cbs.test_names(), columns=pca_names)
+loadings_ctrl = pd.DataFrame(
+	pca_ctrl.loadings_, index=cbs.test_names(), columns=pca_names)
 
 # Pairwise correlations between test scores
 var_corrs = pd.DataFrame(
-	Ypca.corr_, index=cbs.test_names(), columns=cbs.test_names())
+	pca_ctrl.corr_, index=cbs.test_names(), columns=cbs.test_names())
 
 # Eigenvalues of the components
 eigen_values = pd.DataFrame(
-	Ypca.get_eigenvalues()[0][0:3], index=pca_names, columns=['eigenvalues']).T
+	pca_ctrl.get_eigenvalues()[0][0:3], index=pca_names, columns=['eigenvalues']).T
 
 # Percentage variabnce explained by each component
 pct_variance = pd.DataFrame(
-	Ypca.get_factor_variance()[1]*100, index=pca_names, columns=['% variance']).T
+	pca_ctrl.get_factor_variance()[1]*100, index=pca_names, columns=['% variance']).T
 
 # Generates and displays the chord plot to visualize the factors
-fig = chord_plot(
-	loadings.copy(), var_corrs.copy(), 
-	cscale_name='Picnic', width=700, height=350, threshold=0.20)
+fig_1a = chord_plot(
+	loadings_ctrl.copy(), var_corrs.copy(), 
+	cscale_name='Picnic', width=700, height=350, threshold=0.0)
 
-save_and_display_figure(fig, 'Figure_1A')
+save_and_display_figure(fig_1a, 'Figure_1A', update_repo=save_all)
 
-#%%
 # Generate a table of task to composite score loadings
-loadings = (pd
-	.concat([loadings, eigen_values, pct_variance], axis=0)
+pca_table_ctrl = (pd
+	.concat([loadings_ctrl, eigen_values, pct_variance], axis=0)
 	.join(Yctrl_stats[df_]
 		.T.rename(index={r[0]: r[1] for r in zip(df_, cbs.test_names())}))
 	.loc[:, ['mean', 'std']+pca_names]
 )
 
-loadings.to_csv('./tables/Table_S3.csv')
-loadings
+if save_all:
+	pca_table_ctrl.to_csv('./tables/Table_S3.csv')
+
+pca_table_ctrl
 
 #%% [markdown]
 # ### Control Sample: Calculate Composite Cognitive Scores
 #%% 
 # Calculates the 3 cognitive domain scores from the fitted PCA model
-Zctrl[pca_names] = Ypca.transform(Zctrl[df_])
+Zctrl[pca_names] = pca_ctrl.transform(Zctrl[df_])
 
 # Measure of processing speed: take the 1st Principal Component across 
 # timing-related features (the list of tf_)
@@ -305,7 +308,7 @@ Ycc = (CC.score_data
 	.pipe(set_column_names, af_)
 	.reset_index('device_type')
 	.groupby('user')
-	.first()
+	.nth(0)
 	.pipe(report_N, 'initial scores', reset_count=True)
 	.query('~(device_type in ["BOT", "CONSOLE", "MOBILE"])')
 	.pipe(report_N, 'drop unsupported devices')
@@ -338,12 +341,93 @@ Zcc = (Ycc
 	.pipe(remove_unused_categories)
 )
 
+#%% [markdown]
+# ## COVID+ Sample
+# ### Compare factor structure of cognitives scores to CTRL data/
+#%%
+
+Zcc_ = Zcc.copy()
+Ycc_stats = Zcc_[af_].agg(['mean', 'std'])
+
+# Z-scores the test score features w/r/t to this sample (COVID+)
+Ycc_tfm = Pipeline(steps=[
+	('center', StandardScaler(with_mean=True, with_std=True)),
+	('yeo', PowerTransformer(method='yeo-johnson'))
+]).fit(Zcc[af_].values)
+
+Zcc_[af_] = Ycc_tfm.transform(Zcc_[af_].values)
+
+pca_cc = FactorAnalyzer(
+	method='principal',
+	n_factors=3, 
+	rotation='varimax').fit(Zcc_[df_])
+
+# Build and collect dataframes that will be used for figures and table
+# generation. First, the loadings.
+loadings_cc = pd.DataFrame(
+	pca_cc.loadings_, index=cbs.test_names(), columns=pca_names)
+
+# Pairwise correlations between test scores
+var_corrs_cc = pd.DataFrame(
+	pca_cc.corr_, index=cbs.test_names(), columns=cbs.test_names())
+
+# Generates and displays the chord plot to visualize the factors
+fig_1x = chord_plot(
+	loadings_cc.copy(), var_corrs.copy(), 
+	cscale_name='Picnic', width=700, height=350, threshold=0.0)
+
+print("COVID+ Factor Structure")
+save_and_display_figure(fig_1x, 'Figure_S5b', update_repo = save_all)
+
+print("CTRL Factor Structure")
+save_and_display_figure(fig_1a, 'Figure_1A', update_repo = save_all)
+
+eigen_values = pd.DataFrame(
+	pca_cc.get_eigenvalues()[0][0:3], index=pca_names, columns=['eigenvalues']).T
+
+pct_variance = pd.DataFrame(
+	pca_cc.get_factor_variance()[1]*100, index=pca_names, columns=['% variance']).T
+
+# Generate a table of task to composite score loadings
+pca_table_cc = (pd
+	.concat([loadings_cc, eigen_values, pct_variance], axis=0)
+	.join(Yctrl_stats[df_]
+		.T.rename(index={r[0]: r[1] for r in zip(df_, cbs.test_names())}))
+	.loc[:, ['mean', 'std']+pca_names]
+)
+
+if save_all:
+	pca_table_cc.to_csv('./tables/Table_S3b.csv')
+
+pca_table_cc
+
+#%%
+target = pca_ctrl.loadings_		# factor structure from CTRL group
+sample = pca_cc.loadings_		# factor structure from COVID+ group
+
+# Calculates the congruency coeffient for each factor twice, 1st without doing
+# a procustes transformation, 2nd time with the transformation.
+factors_cc = [tuckersCC(target, sample, do_procrustes = x) for x in [False, True]]
+factors_cc = (pd
+	.DataFrame(
+		np.vstack(factors_cc),
+		index = [False, True], columns = pca_names)
+	.rename_axis('procrustes', axis=0)
+)
+
+if save_all:
+	factors_cc.to_csv('./tables/Table_S3c.csv')
+
+factors_cc
+
+#%%
+
 # Standardizes all score features using the transformer that was fitted on the 
 # control sample data (i.e., using the control sample means and SDs, etc.)
 Zcc[af_] = Ytfm.transform(Zcc[af_])
 
 # Calculate the composite scores
-Zcc[pca_names] = Ypca.transform(Zcc[df_])
+Zcc[pca_names] = pca_ctrl.transform(Zcc[df_])
 Zcc['processing_speed'] = Yspd.transform(Zcc[tf_])
 Zcc['overall'] = Yavg_tfm.transform(Zcc[df_].mean(axis=1).values.reshape(-1,1))
 
