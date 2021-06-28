@@ -3,6 +3,3 @@ __pycache__/
 .code-workspace
 .vscode/
 cbs_data/data/*.csv
-tmp/
-tables/
-images/
