@@ -184,7 +184,7 @@ pca_table_ctrl = (pd
 	.loc[:, ['mean', 'std']+pca_names]
 )
 
-pca_table_ctrl.to_csv('./tables/Table_S3.csv')
+pca_table_ctrl.to_csv('./outputs/tables/Table_S3.csv')
 
 pca_table_ctrl
 

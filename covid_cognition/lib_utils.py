@@ -43,15 +43,12 @@ def set_column_names(df, new_names):
 from IPython.display import SVG, display
 from os import path
 
-def save_and_display_figure(figure, file_name, update_repo=True):
+def save_and_display_figure(figure, file_name):
 	""" Save images in SVG format (for editing/manuscript) then display inside
 		the notebook. Avoids having to have multiple versions of the image, or 
 		multiple ways of displaying images from plotly, etc.
 	"""
-	if update_repo:
-		img_path = path.join('.', 'images')
-	else:
-		img_path = path.join('.', 'tmp')
+	img_path = path.join('.', 'outputs', 'images')
 	full_file_name = path.join(img_path, f"{file_name}.svg")
 	figure.write_image(full_file_name)
 	display(SVG(full_file_name))
@@ -92,7 +89,7 @@ def save_and_display_table(df, fn):
 		.html file. Saving as .html so it's as close as possible to the final
 		manuscript format. Still haven't found a better way to do this...
 	"""
-	with open(f"./tables/{fn}.html", 'w') as wf:
+	with open(f"./outputs/tables/{fn}.html", 'w') as wf:
 		wf.write(styled_df(df, return_it=True).render())
 
 table_style = {
