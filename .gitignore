@@ -4,3 +4,5 @@ __pycache__/
 .vscode/
 cbs_data/data/*.csv
 tmp/
+tables/
+images/

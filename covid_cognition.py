@@ -59,8 +59,6 @@ np.set_printoptions(precision=3)
 
 idx = pd.IndexSlice
 
-save_all = False
-
 #%% [markdown]
 # ## Control (Pre-Pandemic) Dataset
 # ### Load & Preprocess Data
@@ -176,7 +174,7 @@ fig_1a = chord_plot(
 	loadings_ctrl.copy(), var_corrs.copy(), 
 	cscale_name='Picnic', width=700, height=350, threshold=0.0)
 
-save_and_display_figure(fig_1a, 'Figure_1A', update_repo=save_all)
+save_and_display_figure(fig_1a, 'Figure_1A')
 
 # Generate a table of task to composite score loadings
 pca_table_ctrl = (pd
@@ -186,8 +184,7 @@ pca_table_ctrl = (pd
 	.loc[:, ['mean', 'std']+pca_names]
 )
 
-if save_all:
-	pca_table_ctrl.to_csv('./tables/Table_S3.csv')
+pca_table_ctrl.to_csv('./tables/Table_S3.csv')
 
 pca_table_ctrl
 
@@ -377,10 +374,10 @@ fig_1x = chord_plot(
 	cscale_name='Picnic', width=700, height=350, threshold=0.0)
 
 print("COVID+ Factor Structure")
-save_and_display_figure(fig_1x, 'Figure_S5b', update_repo = save_all)
+save_and_display_figure(fig_1x, 'Figure_S5b')
 
 print("CTRL Factor Structure")
-save_and_display_figure(fig_1a, 'Figure_1A', update_repo = save_all)
+save_and_display_figure(fig_1a, 'Figure_1A')
 
 eigen_values = pd.DataFrame(
 	pca_cc.get_eigenvalues()[0][0:3], index=pca_names, columns=['eigenvalues']).T
@@ -396,8 +393,7 @@ pca_table_cc = (pd
 	.loc[:, ['mean', 'std']+pca_names]
 )
 
-if save_all:
-	pca_table_cc.to_csv('./tables/Table_S3b.csv')
+pca_table_cc.to_csv('./tables/Table_S3b.csv')
 
 pca_table_cc
 
@@ -415,8 +411,7 @@ factors_cc = (pd
 	.rename_axis('procrustes', axis=0)
 )
 
-if save_all:
-	factors_cc.to_csv('./tables/Table_S3c.csv')
+factors_cc.to_csv('./tables/Table_S3c.csv')
 
 factors_cc
 
@@ -567,12 +562,13 @@ table = (pd
 	.join(fdata_desc)
 	.loc[:, ['mean', 'std']+fnames]
 )
+
 table.to_csv(f"./tables/Table_S2.csv")
 
 # Visualize the factor structure with a chord plot
 f = chord_plot(
 		loadings, fdata0[var_order].corr(), 
-		width=800, height=350, cscale_name='Picnic', threshold=0.20)
+		width=800, height=350, cscale_name='Picnic', threshold=0.0)
 
 save_and_display_figure(f, 'Figure_1B')
 
