@@ -393,7 +393,7 @@ pca_table_cc = (pd
 	.loc[:, ['mean', 'std']+pca_names]
 )
 
-pca_table_cc.to_csv('./tables/Table_S3b.csv')
+pca_table_cc.to_csv('./outputs/tables/Table_S3b.csv')
 
 pca_table_cc
 
@@ -411,7 +411,7 @@ factors_cc = (pd
 	.rename_axis('procrustes', axis=0)
 )
 
-factors_cc.to_csv('./tables/Table_S3c.csv')
+factors_cc.to_csv('./outputs/tables/Table_S3c.csv')
 
 factors_cc
 
@@ -563,7 +563,7 @@ table = (pd
 	.loc[:, ['mean', 'std']+fnames]
 )
 
-table.to_csv(f"./tables/Table_S2.csv")
+table.to_csv(f"./outputs/tables/Table_S2.csv")
 
 # Visualize the factor structure with a chord plot
 f = chord_plot(
@@ -829,8 +829,8 @@ f1_ts = wp.create_stats_figure(
 # Matric of BFs
 f1_bf = wp.create_bayes_factors_figure(res1_fig, suppress_h0=True, vertline=2)
 
-f1_ts.savefig('./images/Figure_4A.svg')
-f1_bf.savefig('./images/Figure_5B.svg')
+f1_ts.savefig('./outputs/images/Figure_4A.svg')
+f1_bf.savefig('./outputs/images/Figure_5B.svg')
 
 #%% [markdown]
 # ### QQ-Plots
@@ -1020,8 +1020,8 @@ r4_t_fig = wp.create_stats_figure(
 r4_b_fig = wp.create_bayes_factors_figure(
 	res4_, suppress_h0=True, vertline=2)
 
-r4_t_fig.savefig('./images/Figure_6a.svg')
-r4_b_fig.savefig('./images/Figure_6b.svg')
+r4_t_fig.savefig('./outputs/images/Figure_6a.svg')
+r4_b_fig.savefig('./outputs/images/Figure_6b.svg')
 
 #%% [markdown]
 # ## Other Exploratory Analyses
@@ -1047,8 +1047,8 @@ f5_ts = wp.create_stats_figure(
 f5_bf = wp.create_bayes_factors_figure(r5_comparisons, 
 	vertline=2, cell_scale=0.6)
 
-f5_ts.savefig('./images/Figure_S4A.svg')
-f5_bf.savefig('./images/Figure_S4B.svg')
+f5_ts.savefig('./outputs/images/Figure_S4A.svg')
+f5_bf.savefig('./outputs/images/Figure_S4B.svg')
 
 # %% [markdown]
 # QQ-plots of scores, by hospitalisation
@@ -1180,9 +1180,9 @@ bundles = [
 sdd = SankeyDefinition(nodes, bundles, order, flow_partition=target)
 (weave(sdd, links, palette=colormap)
 	.to_widget(width=1000, align_link_types=True)
-	.auto_save_svg('./images/Figure_S1.svg'))
+	.auto_save_svg('./outputs/images/Figure_S1.svg'))
 
 #%%
-SVG('./images/Figure_S1.svg')
+SVG('./outputs/images/Figure_S1.svg')
 #%%
 
