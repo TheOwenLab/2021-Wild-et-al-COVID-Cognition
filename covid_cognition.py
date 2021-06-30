@@ -151,30 +151,33 @@ Zctrl[af_] = Ytfm.transform(Zctrl[af_].values)
 # Perform a PCA of the 12 primary CBS measures specifying 3 components and a
 # varimax rotation. These choices are based on previous work with these tests:
 # Hampshire et al (2012), Wild et al (2018).
-pca_ctrl = FactorAnalyzer(
+pca_cbs_ctrl = FactorAnalyzer(
 	method='principal',
 	n_factors=3, 
 	rotation='varimax').fit(Zctrl[df_])
 
 # I know the scores turn out in this order....
-pca_names = ['STM', 'reasoning', 'verbal']
+domains = ['STM', 'reasoning', 'verbal']
 
 # Build and collect dataframes that will be used for figures and table
 # generation. First, the loadings.
 loadings_ctrl = pd.DataFrame(
-	pca_ctrl.loadings_, index=cbs.test_names(), columns=pca_names)
+	pca_cbs_ctrl.loadings_, index=cbs.test_names(), columns=domains)
 
 # Pairwise correlations between test scores
 var_corrs = pd.DataFrame(
-	pca_ctrl.corr_, index=cbs.test_names(), columns=cbs.test_names())
+	pca_cbs_ctrl.corr_, 
+	index=cbs.test_names(), columns=cbs.test_names())
 
 # Eigenvalues of the components
 eigen_values = pd.DataFrame(
-	pca_ctrl.get_eigenvalues()[0][0:3], index=pca_names, columns=['eigenvalues']).T
+	pca_cbs_ctrl.get_eigenvalues()[0][0:3], 
+	index=domains, columns=['eigenvalues']).T
 
 # Percentage variabnce explained by each component
 pct_variance = pd.DataFrame(
-	pca_ctrl.get_factor_variance()[1]*100, index=pca_names, columns=['% variance']).T
+	pca_cbs_ctrl.get_factor_variance()[1]*100, 
+	index=domains, columns=['% variance']).T
 
 # Generates and displays the chord plot to visualize the factors
 fig_1a = chord_plot(
@@ -188,7 +191,7 @@ pca_table_ctrl = (pd
 	.concat([loadings_ctrl, eigen_values, pct_variance], axis=0)
 	.join(Yctrl_stats[df_]
 		.T.rename(index={r[0]: r[1] for r in zip(df_, cbs.test_names())}))
-	.loc[:, ['mean', 'std']+pca_names]
+	.loc[:, ['mean', 'std']+domains]
 )
 
 pca_table_ctrl.to_csv('./outputs/tables/Table_S3.csv')
@@ -199,21 +202,21 @@ pca_table_ctrl
 # ### Control Sample: Calculate Composite Cognitive Scores
 #%% 
 # Calculates the 3 cognitive domain scores from the fitted PCA model
-Zctrl[pca_names] = pca_ctrl.transform(Zctrl[df_])
+Zctrl[domains] = pca_cbs_ctrl.transform(Zctrl[df_])
 
 # Measure of processing speed: take the 1st Principal Component across 
-# timing-related features (the list of tf_)
-Yspd = FactorAnalyzer(
+# timing-related features (the list of tf_), derived from ctrl group data.
+pca_spd_ctrl = FactorAnalyzer(
 	method='principal', 
 	n_factors=1,
 	rotation=None).fit(Zctrl[tf_])
-Zctrl['processing_speed'] = Yspd.transform(Zctrl[tf_])
+Zctrl['processing_speed'] = pca_spd_ctrl.transform(Zctrl[tf_])
 
 # Overall measure across CBS battery: the average of all 12 task z-scores,
 # then rescale to have SD = 1.0
 Zctrl['overall'] = Zctrl[df_].mean(axis=1)
-Yavg_tfm = StandardScaler(with_mean=True, with_std=True).fit(Zctrl[['overall']])
-Zctrl['overall'] = Yavg_tfm.transform(Zctrl[['overall']])
+overall_tfm = StandardScaler(with_mean=True, with_std=True).fit(Zctrl[['overall']])
+Zctrl['overall'] = overall_tfm.transform(Zctrl[['overall']])
 
 #%% [markdown]
 # ## Relationship between socio-demographic variables and cognitive performance.
@@ -397,7 +400,7 @@ pca_cc = FactorAnalyzer(
 # Component (factor) loadings
 loadings_cc = pd.DataFrame(
 	pca_cc.loadings_, 
-	index=cbs.test_names(), columns=pca_names)
+	index=cbs.test_names(), columns=domains)
 
 # Pair-wise correlations between variables
 var_corrs_cc = pd.DataFrame(
@@ -407,19 +410,19 @@ var_corrs_cc = pd.DataFrame(
 # Eigenvalues of the components
 eigen_values = pd.DataFrame(
 	pca_cc.get_eigenvalues()[0][0:3], 
-	index=pca_names, columns=['eigenvalues']).T
+	index=domains, columns=['eigenvalues']).T
 
 # % Variance explained by each component
 pct_variance = pd.DataFrame(
 	pca_cc.get_factor_variance()[1]*100, 
-	index=pca_names, columns=['% variance']).T
+	index=domains, columns=['% variance']).T
 
 # Create a table of loadings, test means/SDs, eigenvalues, % variance, etc.
 pca_table_cc = (pd
 	.concat([loadings_cc, eigen_values, pct_variance], axis=0)
 	.join(Yctrl_stats[df_]
 		.T.rename(index={r[0]: r[1] for r in zip(df_, cbs.test_names())}))
-	.loc[:, ['mean', 'std']+pca_names]
+	.loc[:, ['mean', 'std']+domains]
 )
 
 # Generates and displays the chord plot to visualize the factors
@@ -439,7 +442,7 @@ display(pca_table_cc)
 # Next, compare the similarity of the factor structures produced from
 # each group (COVID+ and CTRL).
 
-target = pca_ctrl.loadings_		# factor structure from CTRL group
+target = pca_cbs_ctrl.loadings_		# factor structure from CTRL group
 sample = pca_cc.loadings_		# factor structure from COVID+ group
 
 # Calculates the congruency coeffient for each factor twice, 1st without doing
@@ -448,7 +451,7 @@ factors_cc = [tuckersCC(target, sample, do_procrustes = x) for x in [False, True
 factors_cc = (pd
 	.DataFrame(
 		np.vstack(factors_cc),
-		index = [False, True], columns = pca_names)
+		index = [False, True], columns = domains)
 	.rename_axis('procrustes', axis=0)
 )
 
@@ -463,9 +466,9 @@ display(factors_cc)
 Zcc[af_] = Ytfm.transform(Zcc[af_])
 
 # Calculate the composite scores
-Zcc[pca_names] = pca_ctrl.transform(Zcc[df_])
-Zcc['processing_speed'] = Yspd.transform(Zcc[tf_])
-Zcc['overall'] = Yavg_tfm.transform(Zcc[df_].mean(axis=1).values.reshape(-1,1))
+Zcc[domains] = pca_cbs_ctrl.transform(Zcc[df_])
+Zcc['processing_speed'] = pca_spd_ctrl.transform(Zcc[tf_])
+Zcc['overall'] = overall_tfm.transform(Zcc[df_].mean(axis=1).values.reshape(-1,1))
 
 # Adjust for effects of covariates
 Xcc = Xtfm.transform(Zcc[Xcovar])
@@ -826,7 +829,7 @@ save_and_display_table(r3b_ttests[ttest_columns], 'Table_S5b')
 #%%
 # Build and estimate regression models for each composite cognitive score
 
-nuisance_v = ['pre_existing_condition'] #, 'nicotine']
+nuisance_v = ['pre_existing_condition']
 full_model =  ws.build_model_expression(fnames)
 
 print(f"Full model expression: {full_model}")

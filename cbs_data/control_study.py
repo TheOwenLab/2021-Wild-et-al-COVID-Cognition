@@ -27,7 +27,8 @@ class ControlStudyQuestionnaire(Questionnaire):
             'cannabis': ('cannabis', QuestionType.BOOLEAN),
             'stimulants': ('stimulants', QuestionType.BOOLEAN),
             'depressants': ('depressants', QuestionType.BOOLEAN),
-            'fluent_english': ('fluent_english',  QuestionType.BOOLEAN)
+            'fluent_english': ('fluent_english',  QuestionType.BOOLEAN),
+            'hospital_stay': ('hospital_stay',  QuestionType.BOOLEAN)
         }
 
     def __init__(self, study_class, data_file):
