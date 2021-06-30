@@ -277,12 +277,44 @@ def create_bayes_factors_figure(results, log_stats=True,
 
     return figure
 
+# The following dicts (prefixed with rc_) are default options for the raincloud
+# plots. Putting them here cleans up the main notebook, but we can still update
+# values in order to change the plots when needed.
+
+rc_title = {
+	'pad': {'b': 10, 'l': 10},
+	'yanchor': 'bottom', 'xanchor': 'left',
+	'yref': 'paper', 'xref': 'paper',
+	'x': 0, 'y': 1
+}
+
+rc_yaxis = {
+	'title': 'Score (SDs)',
+	'range': [-4.2, 4.05],
+	'tickmode': 'array',
+	'tickvals': np.arange(-4, 4+1),
+	'ticktext': [f"{y}  " for y in np.arange(-4, 4+1)]
+}
+
+rc_layout = {
+	'width': 400, 'height': 350,
+	'margin': {'b': 30, 't': 40, 'l': 50, 'r': 20},
+	'title': rc_title,
+	'yaxis': rc_yaxis,
+}
+
+rc_legend = {
+	'orientation': 'h', 'yanchor': 'top', 'xanchor': 'left', 
+	'x': 0.01, 'y': 0.99,
+	'title': {'side': 'left', 'text': ""},
+}
+
 def raincloud_plot(
         df, plt_vars, grp_var, grp_order=None, grp_colours=cb.Dark2,
         do_box=True, do_pts=True, do_vio=True,
         box_args={}, pts_args={}, mrk_args={}, vio_args={},
         pts_jitter=None, vio_jitter=False, sym_offset=0,
-        layout_args={}, legend_args={}
+        layout_args=None, legend_args=None
     ):
     """ This is a custom implementation of a "raincloud" plot, that displays
         adjacent jittered stripe plots, boxplots, and distribution curves
@@ -465,6 +497,12 @@ def raincloud_plot(
 
     template = plotly_template()
     template['data']['scatter'] = []
+
+    if legend_args is None:
+        legend_args = rc_legend
+
+    if layout_args is None:
+        layout_args = rc_layout
 
     legend_opts = dict(
         title = dict(

@@ -74,7 +74,7 @@ class CovidCogQuestionnaire(Questionnaire):
             'PHQ2-2': ('Q31_2', QuestionType.CATEGORICAL, ['Not at all', 'Several days', 'More than half the days', 'Nearly every day']),
             'GAD2-1': ('Q31_3', QuestionType.CATEGORICAL, ['Not at all', 'Several days', 'More than half the days', 'Nearly every day']),
             'GAD2-2': ('Q31_4', QuestionType.CATEGORICAL, ['Not at all', 'Several days', 'More than half the days', 'Nearly every day']),
-            'exercise_freq': ('Q33', QuestionType.CATEGORICAL),
+            'exercise_freq': ('Q33', QuestionType.CATEGORICAL, ['Never', 'Infrequently', 'Weekly', 'Several times a week', 'Every day']),
             'Q34_diabetes': ('Q34_1', QuestionType.BOOLEAN),
             'Q34_obesity': ('Q34_2', QuestionType.BOOLEAN),
             'Q34_hypertension': ('Q34_3', QuestionType.BOOLEAN),

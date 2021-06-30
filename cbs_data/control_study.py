@@ -22,7 +22,12 @@ class ControlStudyQuestionnaire(Questionnaire):
             'sex': ('sex', QuestionType.CATEGORICAL),
             'education': ('education', QuestionType.CATEGORICAL, ["None", "High School Diploma", "Bachelor's Degree", "Master's Degree", "Doctoral or Professional Degree"]),
             'age': ('age', QuestionType.NUMERIC),
-            'SES_growing_up': ('question_8', QuestionType.CATEGORICAL),
+            'SES_growing_up': ('SES_growing_up', QuestionType.CATEGORICAL),
+            'exercise_freq': ('exercise_freq', QuestionType.CATEGORICAL, ['Not during the past month', 'Less than once a week', 'Once or twice a week', 'Three or more times a week', 'Every day']),
+            'cannabis': ('cannabis', QuestionType.BOOLEAN),
+            'stimulants': ('stimulants', QuestionType.BOOLEAN),
+            'depressants': ('depressants', QuestionType.BOOLEAN),
+            'fluent_english': ('fluent_english',  QuestionType.BOOLEAN)
         }
 
     def __init__(self, study_class, data_file):

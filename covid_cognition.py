@@ -78,7 +78,10 @@ df_ = cbs.abbrev_features(df)
 af  = list(Yctrl.columns)
 af_ = cbs.abbrev_features(af)
 				
-Xcovar = ['age', 'sex', 'post_secondary', 'SES']
+# From Hampshire et al. 2012, and Wild et al. These are the variables that are
+# related to performance on these cognitive tasks.
+Xcovar = ['age', 'sex', 'post_secondary', 'SES', 'exercise',
+	'nicotine', 'alcohol', 'cannabis', 'stimulants', 'depressants']
 
 # Loads the control dataset (Sleep Study, 2017)
 print("\nControl Scores:")
@@ -96,11 +99,14 @@ Yctrl = (Yctrl
 # Have to rename a few columns to match them up to the new study data
 print("\nControl Questionnaires:")
 Qctrl = (CS
-	.questionnaire.data[['sex', 'age', 'education', 'SES_growing_up']]
+	.questionnaire.data
 	.reset_index().astype({'user': str})
 	.set_index('user')
 	.rename(columns={'SES_growing_up': 'SES'})
 	.assign(post_secondary = lambda x: x.education >= "Bachelor's Degree")
+	.assign(nicotine = lambda x: x.cigarettes_per_day > 0)
+	.assign(alcohol = lambda x: x.alcohol_per_week > 14)
+	.assign(exercise = lambda x: x.exercise_freq >= 'Once or twice a week')
 	.pipe(report_N, "initial dataset", reset_count=True)
 )
 
@@ -113,7 +119,8 @@ Zctrl = (Yctrl
 	.query('(age >= 18) & (age <= 100)')
 	.query('sex in ["Male", "Female"]')
 	.pipe(report_N, 'filter age')
-	.dropna()
+	.pipe(report_N, 'English only')
+	.dropna(subset=Xcovar+af_)
 	.pipe(report_N, 'drop missing data')
 	.pipe(ws.filter_df, subset=af_, sds=[6], drop=True)
 	.pipe(report_N, '6 SD filter')
@@ -235,39 +242,51 @@ f = wp.create_stats_figure(
 # variables. Note that we model age using linear+quadratic terms.
 from sklearn.preprocessing import PolynomialFeatures
 
-age_tfm = Pipeline(steps=[
-	('center', StandardScaler(with_mean=True, with_std=False)),
-	('poly', PolynomialFeatures(degree=2, include_bias=False)),
-])
-
 # Transform covariates (X) variables specifying:
 #	- age, as a linear and quadratic term (see age_tfm)
 #	- level of education, as a binary variable with 1 = False
 #	- SES growing up, as binary variable with 1 = Below poverty level
-Xtfm = ColumnTransformer([
-	('cont',  age_tfm, ['age']),
-	('c_sex', OneHotEncoder(drop=['Female']), ['sex']),
-	('c_edu', OneHotEncoder(drop=[True]), ['post_secondary']),
-	('c_ses', OneHotEncoder(drop=['At or above poverty level']), ['SES']),
-]).fit(Zctrl[Xcovar])
+# 	- nicotine, as binary with 1 = smokes > 0 cigarettes per day
 
-# This is an alternative transformer for the covariates that only mean-centres
-# the age variable (instead of quadratic term, like above.)
-Xtfm_ = ColumnTransformer([
-	('cont',  StandardScaler(with_mean=True, with_std=False), ['age']),
+age_q_tfm = Pipeline(steps=[
+	('center', StandardScaler(with_mean=True, with_std=False)),
+	('poly', PolynomialFeatures(degree=2, include_bias=False)),
+])
+
+x_tfms = [
+	('cont',  age_q_tfm, ['age']),
 	('c_sex', OneHotEncoder(drop=['Female']), ['sex']),
 	('c_edu', OneHotEncoder(drop=[False]), ['post_secondary']),
 	('c_ses', OneHotEncoder(drop=['At or above poverty level']), ['SES']),
-]).fit(Zctrl[Xcovar])
+	('c_oth', OneHotEncoder(drop=[False, False, True, False, False, False]),
+		['nicotine', 'alcohol', 'exercise', 'cannabis', 'stimulants', 'depressants']),
+]
+
+Xtfm = ColumnTransformer(x_tfms, sparse_threshold=0).fit(Zctrl[Xcovar])
+
+# This is an alternative transformer for the covariates that only mean-centres
+# the age variable (instead of quadratic term, like above.)
+age_l_tfm = StandardScaler(with_mean=True, with_std=False)
+x_tfms_alt = x_tfms.copy()
+x_tfms_alt[0] = ('cont',  age_l_tfm, ['age'])
+
+Xtfm_ = ColumnTransformer(x_tfms_alt, sparse_threshold=0).fit(Zctrl[Xcovar])
 
 # Transform the covariate columns into a numeric matrix
-Xss = Xtfm.transform(Zctrl[Xcovar])
+# "X" denotes a design matrix, "Y" denotes the dependent variables (scores)
+Xctrl = Xtfm.transform(Zctrl[Xcovar])
 
 # Add an intercept
-Xss = np.c_[Xss, np.ones(Xss.shape[0])]
+Xctrl = np.c_[Xctrl, np.ones(Xctrl.shape[0])]
 
-# Solve for the the parameters. We'll use these to correct the COVID+ sample
-Bss = np.dot(pinv(Xss), Zctrl[Yvar])
+# Solve for the the linear regression parameters. 
+# We'll use these to correct the scores from both groups by subtracting the 
+# expected effects (i.e., regressing them out)
+Bctrl = np.dot(pinv(Xctrl), Zctrl[Yvar])
+
+# Adjust the CTRL group for the covariates...
+Yctrl_hat = Xctrl.dot(Bctrl)
+Zctrl[Yvar] -= Yctrl_hat
 
 #%% [markdown]
 # ## COVID+ Sample
@@ -279,6 +298,13 @@ subjvars = ['subjective_memory', 'baseline_functioning']
 sf36vars = list(CC.questionnaire.SF36_map.keys())
 severity = ['WHOc']
 
+# Existing conditions related to COVID severity / outcomes, and / or performance
+# on the CBS cognitive test battery
+pre_exising_conditions = [
+	'Q34_diabetes', 'Q34_obesity', 'Q34_hypertension', 'Q34_stroke', 
+	'Q34_heart_attack', 'Q34_memory_problem'
+]
+
 # Load and process questionnaire data
 print("\nCC Questionnaire:")
 Qcc = (CC.questionnaire.data
@@ -287,19 +313,23 @@ Qcc = (CC.questionnaire.data
 	.query('~index.duplicated(keep="first")')
 	.pipe(report_N, 'remove duplicates')
 	.assign(post_secondary = lambda x: x.education > 'Some university or college, no diploma')
+	.assign(subjective_memory = lambda x: x.subjective_memory.cat.codes)
+	.assign(pre_existing_condition = lambda x: x[pre_exising_conditions].any(axis=1))
+	.assign(nicotine = lambda df: df.nicotine > 0)
+	.assign(alcohol = lambda df: df.alcohol > 14)
+	.assign(exercise = lambda df: df.exercise_freq >= 'Weekly')
+	.assign(cannabis = lambda df: df.cannabis > 0)
+	.rename(columns={'drugs_stimulants': 'stimulants', 'drugs_depressants': 'depressants'})
 )
 
-# Convert the "How would you rate your memory?" values to numeric (0-6)
-Qcc.subjective_memory = Qcc.subjective_memory.cat.codes
-
 # Create an alternative WHO COVID severity variable that is: 0-1, 2, or 3+
-Qcc.WHOc = (Qcc.WHOc
+Qcc['WHOc'] = (Qcc.WHOc
 	.map({'0': '0-1', '1': '0-1', '2': '2', '3+': '3+'})
 	.astype("category")
 )
 
-# Load and process the COVID+ sample CBS test scores, dropping any that were
-# collected with an invalid device type.
+# Load and process the COVID+ CBS test scores, dropping any that were
+# completed with an unsupported device type.
 print("\nCC Scores:")
 Ycc = (CC.score_data
 	.pipe(set_column_names, af_)
@@ -440,7 +470,7 @@ Zcc['overall'] = Yavg_tfm.transform(Zcc[df_].mean(axis=1).values.reshape(-1,1))
 # Adjust for effects of covariates
 Xcc = Xtfm.transform(Zcc[Xcovar])
 Xcc = np.c_[Xcc, np.ones(Xcc.shape[0])]
-Ycc_hat = Xcc.dot(Bss)
+Ycc_hat = Xcc.dot(Bctrl)
 Zcc[Yvar] -= Ycc_hat
 
 Zcc = Zcc.rename(columns={'WHOi': 'WHO_COVID_severity'})
@@ -583,7 +613,6 @@ f = chord_plot(
 
 save_and_display_figure(f, 'Figure_1B')
 
-#%%
 # Correlations between health measures (same as shown in the above chord plot)
 f = wp.correlogram(fdata0, subset=var_order, mask_diag=True)
 save_and_display_figure(f, 'Figure_S2')
@@ -663,114 +692,43 @@ _, age_bins = pd.qcut(Zcc_['age'], 3, labels=False, retbins=True, precision=0)
 age_bins = [f"{int(x)}-{int(age_bins[i+1])}" for i, x in enumerate(age_bins[:-1])]
 Zcc_['age_bin'] = pd.qcut(Zcc_['age'], 3, labels=age_bins)
 
-#%%
-import importlib
-importlib.reload(wp)
-
-title = {
-	'pad': {'b': 10, 'l': 10},
-	'yanchor': 'bottom', 'xanchor': 'left',
-	'yref': 'paper', 'xref': 'paper',
-	'x': 0, 'y': 1
-}
-
-layout = {
-	'width': 400, 'height': 350,
-	'margin': {'b': 30, 't': 40, 'l': 50, 'r': 20},
-	'title': title,
-	'yaxis': {
-		'range': [-4.1, 4.1], 'tickmode': 'array', 'tickvals': np.arange(-4, 5),
-		'title': 'Score (SDs)'
-	}
-}
-
-legend = {
-	'orientation': 'h', 'yanchor': 'top', 'xanchor': 'left', 
-	'x': 0.01, 'y': 0.99,
-	'title': {'side': 'left', 'text': ""},
-}
-
-#%%
-title.update(text = 'A) Age (years)')
+wp.rc_title.update(text = 'A) Age (years)')
 age_plot = wp.raincloud_plot(
 	Zcc_, ['F1', 'F2'], 'age_bin', grp_order=age_bins,
 	vio_args = {'spanmode': 'soft'},
-	layout_args = layout, legend_args = legend)
-
+)
 age_plot
 
-#%%
-importlib.reload(wp)
-layout.update(boxgroupgap = 0.4, width = 280)
-layout['yaxis'].update(showticklabels = False, title = None)
-layout['margin'].update(l=30)
-title.update(text = 'B) Post Secondary')
+wp.rc_layout.update(boxgroupgap = 0.4, width = 280)
+wp.rc_yaxis.update(showticklabels = False, title = None)
+wp.rc_layout['margin'].update(l=30)
+wp.rc_title.update(text = 'B) Post Secondary')
+
 edu = wp.raincloud_plot(
 	Zcc_, ['F1', 'F2'], 'post_secondary',
-	vio_args = {'spanmode': 'soft'}, sym_offset = 2,
-	legend_args = legend, layout_args = layout)
-
+	vio_args = {'spanmode': 'soft'}, sym_offset = 2
+)
 edu
 
-#%%
-title.update(text = 'C) Sex')
+wp.rc_title.update(text = 'C) Sex')
 sex = wp.raincloud_plot(
-	Zcc_, ['F1', 'F2'], 'sex',
-	vio_args = {'spanmode': 'soft'}, sym_offset = 5,
-	legend_args = legend, layout_args = layout)
+	Zcc_, ['F1', 'F2'], 'sex', 
+	vio_args = {'spanmode': 'soft'}, sym_offset = 5
+)
 sex
 
-#%%
+
 Zcc2 = Zcc_.copy()
-#%%
 Zcc_['SES'] = Zcc_['SES'].cat.rename_categories(
 	{'At or above poverty level': 'At / Above', 'Below poverty level': 'Below'}
 )
-#%%
-importlib.reload(wp)
-title.update(text = 'D) SES (poverty level)')
+
+wp.rc_title.update(text = 'D) SES (poverty level)')
 ses = wp.raincloud_plot(
 	Zcc_, ['F1', 'F2'], 'SES',
 	vio_args = {'spanmode': 'soft'}, sym_offset = 7,
-	legend_args = legend, layout_args = layout)
-ses
-#%%
-plot_vars = ['age_bin', 'post_secondary', 'sex', 'SES']
-fig = make_subplots(
-    rows=1, cols=len(Xcovar)+1, shared_yaxes=True, horizontal_spacing = 0.01,
-	specs=[[{'colspan': 2}, {'colspan': 1}, {'colspan': 1}, {'colspan': 1}, {'colspan': 1}]]
 )
-
-for ifig, x in enumerate(plot_vars):
-	means = Zcc_.groupby(x).agg(['mean', 'count', 'std'])[fnames].stack(0)
-	means['mean_se'] = means['std']/np.sqrt(means['count'])
-	means = means.unstack(1).swaplevel(axis=1)
-	grps = list(means.index.unique())
-	ir, ic = 1, ifig+1
-	if ifig > 0:
-		ic += 1
-	for itrace, g in enumerate(grps):
-		cmap = wc.to_RGB_255(bwmap(np.linspace(0.4, 1.0, len(grps))))
-		fig.add_trace(
-			go.Bar(
-				name=g, x=fnames, y=means.loc[g, idx[:, 'mean']],
-				marker_color=cmap[itrace],
-				error_y={
-					'type': 'data', 
-					'array': means.loc[g, idx[:, 'mean_se']]
-				}),
-		row=ir, col=ic)
-		# fig.update_xaxes(title_text='Factor', row=1, col=ifig+2)
-
-fig.update_yaxes(title_text='SD Units', row=1, col=1)
-fig.update_layout(
-	yaxis={'zerolinewidth': 2},
-	template=wp.plotly_template(),
-	showlegend=False,
-	margin={'l': 75, 'b': 40, 't': 20, 'r': 20},
-	width=650, height=275)
-
-save_and_display_figure(fig, 'Figure_2')
+ses
 
 #%% [markdown]
 # ## COVID+ vs. Control - Comparisons of Cognitive Performance
@@ -867,28 +825,33 @@ save_and_display_table(r3b_ttests[ttest_columns], 'Table_S5b')
 # ## COVID+ Sample - Predict Cognitive Performance From Health Factors
 #%%
 # Build and estimate regression models for each composite cognitive score
-# (comp_scores) using the expression: '~ F1 + F2'. 
+
+nuisance_v = ['pre_existing_condition'] #, 'nicotine']
+full_model =  ws.build_model_expression(fnames)
+
+print(f"Full model expression: {full_model}")
+
 r1_regressions, r1_models = ws.regression_analyses(
-	'%s ~ F1 + F2', comp_scores, Zcc, n_comparisons=15)
+		full_model, comp_scores, Zcc, n_comparisons=15)
 
 # Then, we perform model comparisons where the null or reduced model (h0) does
 # not contain the variable of interest, whereas the alternative model (h1) DOES.
 # This function returns Bayes factors, effect sizes, likelihood ratios, etc.
 r1_comparisons = ws.compare_models([
 	{'name': 'F1',
-		'h0': '%s ~ 1 + F2', 
-		'h1': '%s ~ 1 + F1 + F2'}, 
+		'h0': ws.build_model_expression("F2"), # doesn't include F1
+		'h1': full_model}, 
 	{'name': 'F2',
-		'h0': '%s ~ 1 + F1', 
-		'h1': '%s ~ 1 + F1 + F2'}],
-	Zcc, comp_scores, smf.ols, n_comparisons=15)
+		'h0': ws.build_model_expression("F1"), # doesn't include F2
+		'h1': full_model}
+	], Zcc, comp_scores, smf.ols, n_comparisons=15)
 
 # Extract and combine the various statistics from the above regression
-# analyses and build the table of results.
+# analyses and build the table of results. We are only keeping rows for the 
+# regressors of interest (not going to keep parameters etc. for nuisance vars)
 res1_ = (r1_regressions
 	.join(r1_comparisons.loc[:, comp_columns])
-	.loc[r1_regressions.index, :]
-	.drop('Intercept', level='contrast')
+	.loc[r1_comparisons.index, :]
 	.rename(columns={'value': 'B'})
 )
 
@@ -941,18 +904,20 @@ save_and_display_figure(qq_f, 'Figure_S3')
 
 #%% 
 # Include covariates in the model expression(s)
+
+full_model_w_covar = ws.build_model_expression(fnames, Xcovar)
+
 r1b_regressions, _ = ws.regression_analyses(
-	'%s ~ F1 + F2 + age + sex + post_secondary + SES', comp_scores, Zcc, n_comparisons=15)
+		full_model_w_covar, comp_scores, Zcc, n_comparisons=15)
 
 r1b_comparisons = ws.compare_models([
 	{'name': 'F1',
-		'h0': '%s ~ 1 + F2 + age + sex + post_secondary + SES', 
-		'h1': '%s ~ 1 + F1 + F2 + age + sex + post_secondary + SES'}, 
+		'h0': ws.build_model_expression('F2', Xcovar), # doesn't include F1, 
+		'h1': full_model_w_covar}, 
 	{'name': 'F2',
-		'h0': '%s ~ 1 + F1 + age + sex + post_secondary + SES', 
-		'h1': '%s ~ 1 + F1 + F2 + age + sex + post_secondary + SES'}],
-	Zcc, comp_scores, smf.ols, n_comparisons=15)
-
+		'h0': ws.build_model_expression('F1', Xcovar), # doesn't include F2, 
+		'h1': full_model_w_covar}
+	], Zcc, comp_scores, smf.ols, n_comparisons=15)
 
 res1b_ = (r1b_regressions
 	.join(r1b_comparisons.loc[:, comp_columns])
@@ -1075,27 +1040,28 @@ save_and_display_table(r5b_ttests[ttest_columns], 'Table_S8')
 # Transform it into a binary variable, where 1 = "Yes" (hospitalised)
 Zcc['hospital_stay'] = OneHotEncoder(drop=['No']).fit_transform(Zcc[['hospital_stay']]).todense()
 
+#%%
+full_model_w_hosp = ws.build_model_expression(fnames, 'hospital_stay')
+
 r4_regressions, _ = ws.regression_analyses(
-	'%s ~ F1 + F2 + hospital_stay', 
-	comp_scores, Zcc, n_comparisons=15)
+	full_model_w_hosp, comp_scores, Zcc, n_comparisons=15)
 
 r4_comparisons = ws.compare_models([
 	{'name': 'F1',
-		'h0': '%s ~ 1 + F2 + hospital_stay', 
-		'h1': '%s ~ 1 + F1 + F2 + hospital_stay'}, 
+		'h0': ws.build_model_expression('F2', 'hospital_stay'), # without F1
+		'h1': full_model_w_hosp}, 
 	{'name': 'F2',
-		'h0': '%s ~ 1 + F1 + hospital_stay', 
-		'h1': '%s ~ 1 + F1 + F2 + hospital_stay'},
+		'h0': ws.build_model_expression('F1', 'hospital_stay'), # without F1
+		'h1': full_model_w_hosp},
 	{'name': 'hospital_stay',
-		'h0': '%s ~ 1 + F1 + F2', 
-		'h1': '%s ~ 1 + F1 + F2 + hospital_stay'},],
-	Zcc, comp_scores, smf.ols, n_comparisons=15)
+		'h0': ws.build_model_expression(fnames), # without hospital_stay
+		'h1': full_model_w_hosp}
+	], Zcc, comp_scores, smf.ols, n_comparisons=15)
 
 res4_ = (r4_regressions
 	.join(r4_comparisons.loc[:, comp_columns])
 	.rename(columns={'value': 'B'})
-	.loc[r4_regressions.index, column_order]
-	.drop('Intercept', level='contrast')
+	.loc[r4_comparisons.index, column_order]
 	.rename({'hospital_stay': 'Hospital'})
 )
 
