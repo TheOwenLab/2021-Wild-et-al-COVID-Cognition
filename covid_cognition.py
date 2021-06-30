@@ -343,30 +343,54 @@ Zcc = (Ycc
 # ### Compare factor structure of cognitives scores to CTRL data/
 #%%
 
+# Copy of the original dataframe, because some figures, etc. have different
+# codings for variables.
 Zcc_ = Zcc.copy()
+
+# Original score means and SDs, for use in a summary table.
 Ycc_stats = Zcc_[af_].agg(['mean', 'std'])
 
-# Z-scores the test score features w/r/t to this sample (COVID+)
-Ycc_tfm = Pipeline(steps=[
-	('center', StandardScaler(with_mean=True, with_std=True)),
-	('yeo', PowerTransformer(method='yeo-johnson'))
-]).fit(Zcc[af_].values)
+# Z-score the test score features w/r/t to this sample (COVID+)
+Zcc_[af_] = Pipeline(
+	steps=[('center', StandardScaler(with_mean=True, with_std=True)),
+		   ('yeo', PowerTransformer(method='yeo-johnson'))]
+).fit_transform(Zcc_[af_].values)
 
-Zcc_[af_] = Ycc_tfm.transform(Zcc_[af_].values)
-
+# Perform rotated PCA analysis, specifying 3 components like in the CTRL group.
 pca_cc = FactorAnalyzer(
 	method='principal',
 	n_factors=3, 
 	rotation='varimax').fit(Zcc_[df_])
 
-# Build and collect dataframes that will be used for figures and table
-# generation. First, the loadings.
-loadings_cc = pd.DataFrame(
-	pca_cc.loadings_, index=cbs.test_names(), columns=pca_names)
+# Build and collect dataframes that will be used for figures and tables...
 
-# Pairwise correlations between test scores
+# Component (factor) loadings
+loadings_cc = pd.DataFrame(
+	pca_cc.loadings_, 
+	index=cbs.test_names(), columns=pca_names)
+
+# Pair-wise correlations between variables
 var_corrs_cc = pd.DataFrame(
-	pca_cc.corr_, index=cbs.test_names(), columns=cbs.test_names())
+	pca_cc.corr_, 
+	index=cbs.test_names(), columns=cbs.test_names())
+
+# Eigenvalues of the components
+eigen_values = pd.DataFrame(
+	pca_cc.get_eigenvalues()[0][0:3], 
+	index=pca_names, columns=['eigenvalues']).T
+
+# % Variance explained by each component
+pct_variance = pd.DataFrame(
+	pca_cc.get_factor_variance()[1]*100, 
+	index=pca_names, columns=['% variance']).T
+
+# Create a table of loadings, test means/SDs, eigenvalues, % variance, etc.
+pca_table_cc = (pd
+	.concat([loadings_cc, eigen_values, pct_variance], axis=0)
+	.join(Yctrl_stats[df_]
+		.T.rename(index={r[0]: r[1] for r in zip(df_, cbs.test_names())}))
+	.loc[:, ['mean', 'std']+pca_names]
+)
 
 # Generates and displays the chord plot to visualize the factors
 fig_1x = chord_plot(
@@ -379,25 +403,12 @@ save_and_display_figure(fig_1x, 'Figure_S5b')
 print("CTRL Factor Structure")
 save_and_display_figure(fig_1a, 'Figure_1A')
 
-eigen_values = pd.DataFrame(
-	pca_cc.get_eigenvalues()[0][0:3], index=pca_names, columns=['eigenvalues']).T
-
-pct_variance = pd.DataFrame(
-	pca_cc.get_factor_variance()[1]*100, index=pca_names, columns=['% variance']).T
-
-# Generate a table of task to composite score loadings
-pca_table_cc = (pd
-	.concat([loadings_cc, eigen_values, pct_variance], axis=0)
-	.join(Yctrl_stats[df_]
-		.T.rename(index={r[0]: r[1] for r in zip(df_, cbs.test_names())}))
-	.loc[:, ['mean', 'std']+pca_names]
-)
-
 pca_table_cc.to_csv('./outputs/tables/Table_S3b.csv')
+display(pca_table_cc)
 
-pca_table_cc
+# Next, compare the similarity of the factor structures produced from
+# each group (COVID+ and CTRL).
 
-#%%
 target = pca_ctrl.loadings_		# factor structure from CTRL group
 sample = pca_cc.loadings_		# factor structure from COVID+ group
 
@@ -412,13 +423,13 @@ factors_cc = (pd
 )
 
 factors_cc.to_csv('./outputs/tables/Table_S3c.csv')
-
-factors_cc
+display(factors_cc)
 
 #%%
 
 # Standardizes all score features using the transformer that was fitted on the 
 # control sample data (i.e., using the control sample means and SDs, etc.)
+# Now, cognitive scores will be relative to the CTRL group.
 Zcc[af_] = Ytfm.transform(Zcc[af_])
 
 # Calculate the composite scores
@@ -533,7 +544,7 @@ rotation = "varimax"
 fa = FactorAnalyzer(nf, rotation=rotation)
 fa = fa.fit(fdata0)
 
-# Calcualte Factor scores using the fitted factor model
+# Calculate Factor scores using the fitted factor model
 # - one new column per factor score (named F1 ... FN)
 # - rescale to have SD = 1.0
 Zcc[fnames] = np.nan
@@ -646,8 +657,84 @@ bwmap = wc.create_mpl_cmap(plotly.colors.sequential.gray, alpha=1.0)
 age_edges = np.array([18, 30, 60, 100])
 age_bins = ['18-30', '30-60', '60+']
 Zcc_['age_bin'] = pd.cut(Zcc_['age'], age_edges, labels=age_bins)
+Zcc_['post_secondary'] = Zcc_['post_secondary'].map({True: 'Yes', False: 'No'})
 
-from plotly.subplots import make_subplots
+_, age_bins = pd.qcut(Zcc_['age'], 3, labels=False, retbins=True, precision=0)
+age_bins = [f"{int(x)}-{int(age_bins[i+1])}" for i, x in enumerate(age_bins[:-1])]
+Zcc_['age_bin'] = pd.qcut(Zcc_['age'], 3, labels=age_bins)
+
+#%%
+import importlib
+importlib.reload(wp)
+
+title = {
+	'pad': {'b': 10, 'l': 10},
+	'yanchor': 'bottom', 'xanchor': 'left',
+	'yref': 'paper', 'xref': 'paper',
+	'x': 0, 'y': 1
+}
+
+layout = {
+	'width': 400, 'height': 350,
+	'margin': {'b': 30, 't': 40, 'l': 50, 'r': 20},
+	'title': title,
+	'yaxis': {
+		'range': [-4.1, 4.1], 'tickmode': 'array', 'tickvals': np.arange(-4, 5),
+		'title': 'Score (SDs)'
+	}
+}
+
+legend = {
+	'orientation': 'h', 'yanchor': 'top', 'xanchor': 'left', 
+	'x': 0.01, 'y': 0.99,
+	'title': {'side': 'left', 'text': ""},
+}
+
+#%%
+title.update(text = 'A) Age (years)')
+age_plot = wp.raincloud_plot(
+	Zcc_, ['F1', 'F2'], 'age_bin', grp_order=age_bins,
+	vio_args = {'spanmode': 'soft'},
+	layout_args = layout, legend_args = legend)
+
+age_plot
+
+#%%
+importlib.reload(wp)
+layout.update(boxgroupgap = 0.4, width = 280)
+layout['yaxis'].update(showticklabels = False, title = None)
+layout['margin'].update(l=30)
+title.update(text = 'B) Post Secondary')
+edu = wp.raincloud_plot(
+	Zcc_, ['F1', 'F2'], 'post_secondary',
+	vio_args = {'spanmode': 'soft'}, sym_offset = 2,
+	legend_args = legend, layout_args = layout)
+
+edu
+
+#%%
+title.update(text = 'C) Sex')
+sex = wp.raincloud_plot(
+	Zcc_, ['F1', 'F2'], 'sex',
+	vio_args = {'spanmode': 'soft'}, sym_offset = 5,
+	legend_args = legend, layout_args = layout)
+sex
+
+#%%
+Zcc2 = Zcc_.copy()
+#%%
+Zcc_['SES'] = Zcc_['SES'].cat.rename_categories(
+	{'At or above poverty level': 'At / Above', 'Below poverty level': 'Below'}
+)
+#%%
+importlib.reload(wp)
+title.update(text = 'D) SES (poverty level)')
+ses = wp.raincloud_plot(
+	Zcc_, ['F1', 'F2'], 'SES',
+	vio_args = {'spanmode': 'soft'}, sym_offset = 7,
+	legend_args = legend, layout_args = layout)
+ses
+#%%
 plot_vars = ['age_bin', 'post_secondary', 'sex', 'SES']
 fig = make_subplots(
     rows=1, cols=len(Xcovar)+1, shared_yaxes=True, horizontal_spacing = 0.01,
@@ -826,7 +913,7 @@ f1_ts = wp.create_stats_figure(
 	res1_fig, 'tstat', 'p_adj', diverging=True, vertline=2,
 	correction='bonferroni', stat_range=[-6.3, 6.3])
 
-# Matric of BFs
+# Matrix of BFs
 f1_bf = wp.create_bayes_factors_figure(res1_fig, suppress_h0=True, vertline=2)
 
 f1_ts.savefig('./outputs/images/Figure_4A.svg')
