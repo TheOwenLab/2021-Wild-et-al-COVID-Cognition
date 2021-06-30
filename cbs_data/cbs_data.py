@@ -74,6 +74,9 @@ class Questionnaire(object):
         for q in self.selectable_items:
             df[q] = ~df[q].isna()
 
+        for q in self.boolean_items:
+            df[q] = df[q].astype('bool')
+
         return df
 
     def _details_for_item(self, item):
@@ -93,6 +96,10 @@ class Questionnaire(object):
     @property
     def numeric_items(self):
         return self._items_of_type(QuestionType.NUMERIC)
+
+    @property
+    def boolean_items(self):
+        return self._items_of_type(QuestionType.BOOLEAN)
 
     @property
     def selectable_items(self):
@@ -129,3 +136,4 @@ class QuestionType(Enum):
     STRING = 4
     YESNO = 5
     SELECTABLE = 6
+    BOOLEAN = 7
