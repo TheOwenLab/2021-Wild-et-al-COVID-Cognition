@@ -280,10 +280,9 @@ def create_bayes_factors_figure(results, log_stats=True,
 def raincloud_plot(
         df, plt_vars, grp_var, grp_order=None, grp_colours=cb.Dark2,
         do_box=True, do_pts=True, do_vio=True,
-        bx_pts=False, bx_mean=True,
-        pts_jitter=None, pts_symbols=True, pts_size=5, pts_opacity=0.5,
-        vio_jitter=False, 
-        layout_args={},
+        box_args={}, pts_args={}, mrk_args={}, vio_args={},
+        pts_jitter=None, vio_jitter=False, sym_offset=0,
+        layout_args={}, legend_args={}
     ):
     """ This is a custom implementation of a "raincloud" plot, that displays
         adjacent jittered stripe plots, boxplots, and distribution curves
@@ -305,8 +304,9 @@ def raincloud_plot(
 
         Plotly details for the three subplots:
             https://plotly.github.io/plotly.py-docs/generated/plotly.graph_objects.Box.html
+            https://plotly.github.io/plotly.py-docs/generated/plotly.graph_objects.Violin.html
 
-    Args:
+    Required Args:
         df (Pandas DataFrame) - contains the input data.
         plt_vars (list-like) - the name of the columns that contain data to be
             plotted. Each element of the list will be plotted on a unique
@@ -314,29 +314,32 @@ def raincloud_plot(
         grp_var (string) - the name of a column that contains a grouping
             variable. Groups are colour-coded, and appear grouped together
             over each x-coordinate.
-        grp_order (list-like) - the order of groups (left to right).
+    
+    Optional Args:
+        grp_order (list-like) - the order of groups (left to right). If not 
+            Upplied (value of None) then the order is determined by order of
+            appearance in the data. (default: None)
         do_box (boolean) - display the boxplots? (default: True)
         do_pts (boolean) - display the jittered stripe plot of data points?
             (default: True)
         do_vio (boolean) -  display the distribution (half-violin) plot?
             (default: True)
-        bx_pts (string/boolean) - display outlier points on the box plots? Can be one of
-            "outliers", "suspected outliers", "all", or False. 
-            (default: False - does not display points on the boxplot)
-        bx_mean (string/boolean) - display a dashed line for the mean of the
-            data? Can be one of: True, False, 'sd'. If "sd", the standard
-            deviations are overlaid as diamonds.
-            (default: True)
+        box_args (dict) - additional plotly boxplot options to be passed along
+            to the boxplot subtraces (e.g., to overwrite defaults options)
+        pts_args (dict) - additional options to be passed along to the stripe
+            (scatter/pt) traces (plotly Scatter graphobject)
+        mrk_args (dict) - additional options to be passed along to the marker
+            options of the stripe (scatter/pt) traces.
+        vio_args (dict) - additional options to be passed along to the 
+            violin traces.
         pts_jitter (float)- the amount of jitter of the stripe plots, ranging from 0.0
             to 1.0 (the width allocated for that subplot). 
             (default: None - .75/n_grps)
-        pts_symbols (boolean) - if True (defualt) varies the symbols for each 
-            group's stripe plot.
-        pts_size (integer) - the size of the data point
-        pts_opacity (float) - opacity of stripe plot data points (default: 0.5)
         vio_jitter (boolean) - if True, staggers the half violin plots like the
             box and stripe plots. if False, they overlap.
-        layout_args (dict-like) - extra layout options passed to plotly.
+        sym_offset (integer) - offests the symbols ID (default: 0)
+        layout_args (dict) - extra layout options passed to plotly.
+        legend_args (dict) - extra legend options passed to plotly.
 
     Returns:
         fig - the figure.
@@ -345,6 +348,9 @@ def raincloud_plot(
     n_x = len(plt_vars)
     grps = df[grp_var].unique()
     n_grps = len(grps)
+
+    if grp_order is None:
+        grp_order = list(grps)
 
     # Widths of the gap, points, box, and violin sections
     w_x = 1.
@@ -370,6 +376,7 @@ def raincloud_plot(
     fig = go.Figure()
     w_plt = 0
 
+    # This loop simply adds invisible traces so we have nice legend items
     for ig, g in enumerate(grp_order):
         fig.add_trace(
             go.Scatter(
@@ -379,7 +386,7 @@ def raincloud_plot(
                 name = g,
                 mode = 'markers',
                 marker = dict(
-                    symbol = ig,
+                    symbol = ig+sym_offset,
                     color = grp_colours[ig],
                     opacity = 0.5,
                     line = dict(
@@ -395,48 +402,49 @@ def raincloud_plot(
             y_pt = df.loc[df[grp_var] == g, v]
             nd = y_pt.shape[0]
 
+            # Create the stripe (scatter/pts) trace
             if do_pts:
                 x_pt = np.repeat(c_pt[iv]+o_pt[ig], nd)
                 x_pt += (np.random.rand(nd) - 0.5) * jitter
-                fig.add_trace(
-                    go.Scatter(
-                        x = x_pt,
-                        y = y_pt,
-                        name = g,
-                        mode = 'markers',
-                        marker = dict(
-                            symbol = ig,
-                            color = grp_colours[ig],
-                            opacity = pts_opacity,
-                            size = pts_size,
-                        ),
-                        showlegend=False,
-                    )
+                mrk_opts = dict(
+                    symbol = ig+sym_offset,
+                    color = grp_colours[ig],
+                    opacity = 0.5,
+                    size = 5,
                 )
+                pts_opts = dict(
+                    x = x_pt,
+                    y = y_pt,
+                    name = g,
+                    mode = 'markers',
+                    marker = {**mrk_opts, **mrk_args},
+                    showlegend=False,
+                )
+                fig.add_trace(go.Scatter({**pts_opts, **pts_args}))
 
+            # Create the box trace
             if do_box:
                 x_bx = np.repeat(c_bx[iv]+o_bx[ig], nd)
-                fig.add_trace(
-                    go.Box(
-                        x = x_bx,
-                        y = y_pt,
-                        name = g,
-                        marker_color = grp_colours[ig],
-                        boxpoints = bx_pts,
-                        boxmean = bx_mean,
-                        line = dict(
-                            width=1,
-                        ),
-                        showlegend=False,
-                    )
+                box_opts = dict(
+                    x = x_bx,
+                    y = y_pt,
+                    name = g,
+                    marker_color = grp_colours[ig],
+                    boxpoints = False,
+                    boxmean = True,
+                    line = dict(
+                        width=1,
+                    ),
+                    showlegend=False,
                 )
+                fig.add_trace(go.Box({**box_opts, **box_args}))
                 w_plt = x_bx[0]
 
+            # Create the distribution (half-violin) trace
             if do_vio:
                 x_vi = np.repeat(c_vi[iv], nd).astype('float32')
                 x_vi += o_vi[ig] if vio_jitter else 0
-                fig.add_trace(
-                    go.Violin(
+                vio_opts = dict(
                         x = x_vi,
                         y = y_pt,
                         name = g,
@@ -451,16 +459,24 @@ def raincloud_plot(
                             width = 1
                         ),
                         showlegend=False,
-                    )
                 )
+                fig.add_trace(go.Violin({**vio_opts, **vio_args}))
                 w_plt = x_vi[0]
 
     template = plotly_template()
     template['data']['scatter'] = []
 
-    fig.update_layout(
+    legend_opts = dict(
+        title = dict(
+            text = grp_var,
+            side = 'top',
+        ),
+        itemsizing = 'constant',
+        bgcolor = 'rgba(0,0,0,0)',
+    )
+
+    layout_opts = dict(
         template = template,
-        # violinmode = 'overlay',
         margin = {'b': 75, 't': 20, 'r': 30},
         boxgap = 0.,
         boxgroupgap = 0.2,
@@ -477,15 +493,10 @@ def raincloud_plot(
             tickvals = np.arange(-4, 4+1),
             ticktext = [f"{y}  " for y in np.arange(-4, 4+1)]
         ),
-        legend = dict(
-            title = dict(
-                text = grp_var,
-                side = 'top',
-            ),
-            itemsizing = 'constant',
-        ),
-        **layout_args
+        legend = {**legend_opts, **legend_args}
     )
+
+    fig.update_layout({**layout_opts, **layout_args})
 
     return fig
 
