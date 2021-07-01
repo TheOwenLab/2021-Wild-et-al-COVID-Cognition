@@ -1121,21 +1121,31 @@ rH_b_fig.savefig('./outputs/images/Figure_6b.svg')
 
 #%% [markdown]
 # ## Other Exploratory Analyses
-# ### Simple pairwise correlations between variables and cognitive scores?
+# Next, we'll just do simple pairwise correlations between a bunch of variables
+# and cognitive scores to see if there any other associations that might be 
+# of interest. Given the large number of comparisons, we'll just focus on the 
+# Bayes Factor (10 - in support of the alternative hypothesis).
 
 #%%
-# Variables to test...
-vars_ = fnames+mhvars+Xcovar+['pre_existing_condition']
+# This is the list of all the variables we are going to use as predictors
+# of the five composite cognitive scores.
+vars_ = fnames + mhvars + Xcovar + ['pre_existing_condition']
 
+# Let's run a linear regression that predicts each composite cognitive score
+# from each variable in the list. Then, adjust all the coefficient p-values
+# (5 x # of vars) using false discovery rate.
 rEXPL_regressions = [ws.regression_analyses(f"%s ~ {v}", comp_scores, Zcc) for v in vars_]
 rEXPL_regressions = [r[0].drop('Intercept', level='contrast') for r in rEXPL_regressions]
 rEXPL_regressions = pd.concat(rEXPL_regressions, axis=0)
 rEXPL_regressions = ws.adjust_pvals(
 	rEXPL_regressions, adj_across='all', adj_type='fdr_bh')
 
+# Here we'll do the Bayesian model comparisons, comparing a model with the 
+# single variable (~ v) to an intercept-only model (~ 1).
 models = [{'name': v, 'h0': f"%s ~ 1", 'h1': f"%s ~ {v}"} for v in vars_]
 rEXPL_comparisons = ws.compare_models(models, Zcc, comp_scores, smf.ols)
 
+# Make the figures...
 rEXPL_ts = wp.create_stats_figure(
 	rEXPL_regressions, 'tstat', 'p_adj', diverging=True, vertline=2, 
 	correction='FDR', stat_range=[-6, 6])
@@ -1146,6 +1156,7 @@ rEXPL_bf = wp.create_bayes_factors_figure(rEXPL_comparisons,
 rEXPL_ts.savefig('./outputs/images/Figure_S5A.svg')
 rEXPL_bf.savefig('./outputs/images/Figure_S5B.svg')
 
+# Make the table of BFs...
 rEXPL_bf_table = (rEXPL_comparisons['BF10']
 	.unstack('score')
 	.loc[vars_, comp_scores]
