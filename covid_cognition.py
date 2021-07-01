@@ -132,7 +132,7 @@ Zctrl = (Yctrl
 )
 
 # We'll use these in a table.
-Yctrl_stats  = Zctrl[af_].agg(['mean', 'std'])
+Ystats_ctrl  = Zctrl[af_].agg(['mean', 'std'])
 
 # Calculate mean and stdev for the score features, and remember them so we can 
 # later apply these transformations to the test (CC) dataset.
@@ -151,7 +151,7 @@ Zctrl[af_] = Ytfm.transform(Zctrl[af_].values)
 # Perform a PCA of the 12 primary CBS measures specifying 3 components and a
 # varimax rotation. These choices are based on previous work with these tests:
 # Hampshire et al (2012), Wild et al (2018).
-pca_cbs_ctrl = FactorAnalyzer(
+pca_dmn_ctrl = FactorAnalyzer(
 	method='principal',
 	n_factors=3, 
 	rotation='varimax').fit(Zctrl[df_])
@@ -162,21 +162,21 @@ domains = ['STM', 'reasoning', 'verbal']
 # Build and collect dataframes that will be used for figures and table
 # generation. First, the loadings.
 loadings_ctrl = pd.DataFrame(
-	pca_cbs_ctrl.loadings_, index=cbs.test_names(), columns=domains)
+	pca_dmn_ctrl.loadings_, index=cbs.test_names(), columns=domains)
 
 # Pairwise correlations between test scores
 var_corrs = pd.DataFrame(
-	pca_cbs_ctrl.corr_, 
+	pca_dmn_ctrl.corr_, 
 	index=cbs.test_names(), columns=cbs.test_names())
 
 # Eigenvalues of the components
 eigen_values = pd.DataFrame(
-	pca_cbs_ctrl.get_eigenvalues()[0][0:3], 
+	pca_dmn_ctrl.get_eigenvalues()[0][0:3], 
 	index=domains, columns=['eigenvalues']).T
 
 # Percentage variabnce explained by each component
 pct_variance = pd.DataFrame(
-	pca_cbs_ctrl.get_factor_variance()[1]*100, 
+	pca_dmn_ctrl.get_factor_variance()[1]*100, 
 	index=domains, columns=['% variance']).T
 
 # Generates and displays the chord plot to visualize the factors
@@ -189,7 +189,7 @@ save_and_display_figure(fig_1a, 'Figure_1A')
 # Generate a table of task to composite score loadings
 pca_table_ctrl = (pd
 	.concat([loadings_ctrl, eigen_values, pct_variance], axis=0)
-	.join(Yctrl_stats[df_]
+	.join(Ystats_ctrl[df_]
 		.T.rename(index={r[0]: r[1] for r in zip(df_, cbs.test_names())}))
 	.loc[:, ['mean', 'std']+domains]
 )
@@ -202,7 +202,7 @@ pca_table_ctrl
 # ### Control Sample: Calculate Composite Cognitive Scores
 #%% 
 # Calculates the 3 cognitive domain scores from the fitted PCA model
-Zctrl[domains] = pca_cbs_ctrl.transform(Zctrl[df_])
+Zctrl[domains] = pca_dmn_ctrl.transform(Zctrl[df_])
 
 # Measure of processing speed: take the 1st Principal Component across 
 # timing-related features (the list of tf_), derived from ctrl group data.
@@ -210,32 +210,40 @@ pca_spd_ctrl = FactorAnalyzer(
 	method='principal', 
 	n_factors=1,
 	rotation=None).fit(Zctrl[tf_])
+
+# Force it to go the right away around, so higher scores are better
+if pca_spd_ctrl.loadings_.mean() > 0:
+	pca_spd_ctrl.loadings_ *= -1
+
 Zctrl['processing_speed'] = pca_spd_ctrl.transform(Zctrl[tf_])
 
 # Overall measure across CBS battery: the average of all 12 task z-scores,
-# then rescale to have SD = 1.0
+# then rescale to have M = 0.0, SD = 1.0
 Zctrl['overall'] = Zctrl[df_].mean(axis=1)
 overall_tfm = StandardScaler(with_mean=True, with_std=True).fit(Zctrl[['overall']])
 Zctrl['overall'] = overall_tfm.transform(Zctrl[['overall']])
-
-#%% [markdown]
-# ## Relationship between socio-demographic variables and cognitive performance.
-# - Estimate these from the control dataset using linear regression
-#%%
-# Copy the dataset, because we modify the age variable (mean centre it)
-Zctrl_ = Zctrl.copy()
-Zctrl_.age -= Zctrl_.age.mean()
 
 comp_scores = cbs.DOMAIN_NAMES+['processing_speed', 'overall']
 test_scores = df_
 
 Yvar = test_scores+comp_scores
-expr = ws.build_model_expression(Xcovar)
 
-print(f"Regression formula: {expr}")
+#%% [markdown]
+# ## Relationship between socio-demographic variables and cognitive performance.
+# - Estimate these from the control dataset using linear regression
+#%%
 
-# Generate a summary figure to show significant (p < 0.05) effects.
-r, _ = ws.regression_analyses(expr, Yvar, Zctrl_)
+# Temporary duplication of the control dataset, because we modify the age 
+# mean-centre the age variable for this exploratory analysis.
+Zctrl_ = Zctrl.copy()
+Zctrl_.age -= Zctrl_.age.mean()
+
+covar_model = ws.build_model_expression(Xcovar)
+print(f"Regression formula: {covar_model}")
+
+# Generate a summary figure to show significant (p < 0.05, uncorrected) 
+# relationships between covariates and cognitive scores (just exploratory)
+r, _ = ws.regression_analyses(covar_model, Yvar, Zctrl_)
 f = wp.create_stats_figure(
 	r.drop('Intercept', level='contrast', axis=0),
 	'tstat', 'p', stat_range=[-10, 10], diverging=5, vertline=5)
@@ -381,7 +389,7 @@ Zcc = (Ycc
 Zcc_ = Zcc.copy()
 
 # Original score means and SDs, for use in a summary table.
-Ycc_stats = Zcc_[af_].agg(['mean', 'std'])
+Ystats_cc = Zcc_[af_].agg(['mean', 'std'])
 
 # Z-score the test score features w/r/t to this sample (COVID+)
 Zcc_[af_] = Pipeline(
@@ -390,7 +398,7 @@ Zcc_[af_] = Pipeline(
 ).fit_transform(Zcc_[af_].values)
 
 # Perform rotated PCA analysis, specifying 3 components like in the CTRL group.
-pca_cc = FactorAnalyzer(
+pca_dmn_cc = FactorAnalyzer(
 	method='principal',
 	n_factors=3, 
 	rotation='varimax').fit(Zcc_[df_])
@@ -399,28 +407,28 @@ pca_cc = FactorAnalyzer(
 
 # Component (factor) loadings
 loadings_cc = pd.DataFrame(
-	pca_cc.loadings_, 
+	pca_dmn_cc.loadings_, 
 	index=cbs.test_names(), columns=domains)
 
 # Pair-wise correlations between variables
 var_corrs_cc = pd.DataFrame(
-	pca_cc.corr_, 
+	pca_dmn_cc.corr_, 
 	index=cbs.test_names(), columns=cbs.test_names())
 
 # Eigenvalues of the components
 eigen_values = pd.DataFrame(
-	pca_cc.get_eigenvalues()[0][0:3], 
+	pca_dmn_cc.get_eigenvalues()[0][0:3], 
 	index=domains, columns=['eigenvalues']).T
 
 # % Variance explained by each component
 pct_variance = pd.DataFrame(
-	pca_cc.get_factor_variance()[1]*100, 
+	pca_dmn_cc.get_factor_variance()[1]*100, 
 	index=domains, columns=['% variance']).T
 
 # Create a table of loadings, test means/SDs, eigenvalues, % variance, etc.
 pca_table_cc = (pd
 	.concat([loadings_cc, eigen_values, pct_variance], axis=0)
-	.join(Yctrl_stats[df_]
+	.join(Ystats_cc[df_]
 		.T.rename(index={r[0]: r[1] for r in zip(df_, cbs.test_names())}))
 	.loc[:, ['mean', 'std']+domains]
 )
@@ -436,27 +444,42 @@ save_and_display_figure(fig_1x, 'Figure_S5b')
 print("CTRL Factor Structure")
 save_and_display_figure(fig_1a, 'Figure_1A')
 
-pca_table_cc.to_csv('./outputs/tables/Table_S3b.csv')
+pca_table_cc.to_csv('./outputs/tables/Table_S4.csv')
 display(pca_table_cc)
 
-# Next, compare the similarity of the factor structures produced from
-# each group (COVID+ and CTRL).
+# Replicate the "processing speed" score?
+pca_spd_cc = FactorAnalyzer(
+	method='principal', 
+	n_factors=1,
+	rotation=None).fit(Zcc[tf_])
 
-target = pca_cbs_ctrl.loadings_		# factor structure from CTRL group
-sample = pca_cc.loadings_		# factor structure from COVID+ group
+# Force it to go the right away around, so higher scores are better
+if pca_spd_cc.loadings_.mean() > 0:
+	pca_spd_cc.loadings_ *= -1
+
+# Next, compare the similarity of the factor (domain) structures produced from
+# each group (COVID+ and CTRL).
+trg = pca_dmn_ctrl.loadings_
+src = pca_dmn_cc.loadings_
 
 # Calculates the congruency coeffient for each factor twice, 1st without doing
 # a procustes transformation, 2nd time with the transformation.
-factors_cc = [tuckersCC(target, sample, do_procrustes = x) for x in [False, True]]
-factors_cc = (pd
+domain_coefs = [tuckersCC(trg, src, do_procrustes = x) for x in [False, True]]
+
+trg = pca_spd_ctrl.loadings_
+src = pca_spd_cc.loadings_
+speed_coefs = [tuckersCC(trg, src, do_procrustes = x) for x in [False, True]]
+
+factor_similarities = (pd
 	.DataFrame(
-		np.vstack(factors_cc),
+		np.vstack(domain_coefs),
 		index = [False, True], columns = domains)
-	.rename_axis('procrustes', axis=0)
+	.rename_axis('procrustes', axis = 0)
+	.assign(processing_speed = np.squeeze(speed_coefs))
 )
 
-factors_cc.to_csv('./outputs/tables/Table_S3c.csv')
-display(factors_cc)
+factor_similarities.to_csv('./outputs/tables/Table_S5.csv')
+display(factor_similarities)
 
 #%%
 
@@ -466,7 +489,7 @@ display(factors_cc)
 Zcc[af_] = Ytfm.transform(Zcc[af_])
 
 # Calculate the composite scores
-Zcc[domains] = pca_cbs_ctrl.transform(Zcc[df_])
+Zcc[domains] = pca_dmn_ctrl.transform(Zcc[df_])
 Zcc['processing_speed'] = pca_spd_ctrl.transform(Zcc[tf_])
 Zcc['overall'] = overall_tfm.transform(Zcc[df_].mean(axis=1).values.reshape(-1,1))
 
@@ -678,7 +701,7 @@ f1_ts = wp.create_stats_figure(
 f1_bf = wp.create_bayes_factors_figure(res0, cell_scale=0.6)
 
 # Save / show the stats table
-save_and_display_table(res0, 'Table_S4')
+save_and_display_table(res0, 'Table_S6')
 
 #%% [markdown]
 # ### Plots of Factors Scores vs. Covariates
@@ -810,7 +833,7 @@ for grp, grp_data in Zcc.groupby('F1_bin'):
 	)
 r3a_ttests = pd.concat(r3a_ttests.values(), axis=0, keys=r3a_ttests.keys(), names=['F1_bin'])
 
-save_and_display_table(r3a_ttests[ttest_columns], 'Table_S5')
+save_and_display_table(r3a_ttests[ttest_columns], 'Table_S7')
 
 # Compare groups in F2 bins to controls
 r3b_ttests = {}
@@ -822,18 +845,19 @@ for grp, grp_data in Zcc.groupby('F2_bin'):
 	)
 r3b_ttests = pd.concat(r3b_ttests.values(), axis=0, keys=r3b_ttests.keys(), names=['F2_bin'])
 
-save_and_display_table(r3b_ttests[ttest_columns], 'Table_S5b')
+save_and_display_table(r3b_ttests[ttest_columns], 'Table_S7b')
 
 #%% [markdown]
 # ## COVID+ Sample - Predict Cognitive Performance From Health Factors
 #%%
 # Build and estimate regression models for each composite cognitive score
 
-nuisance_v = ['pre_existing_condition']
-full_model =  ws.build_model_expression(fnames)
+full_model = ws.build_model_expression(fnames)
+print(f"Model expression: {full_model}")
 
-print(f"Full model expression: {full_model}")
-
+# This function constructs and estimates a linear regression model for each of
+# the DVs (the 5 composite scores) using the "full model" formula, which
+# in this case is just ~ F1 + F2.
 r1_regressions, r1_models = ws.regression_analyses(
 		full_model, comp_scores, Zcc, n_comparisons=15)
 
@@ -842,10 +866,10 @@ r1_regressions, r1_models = ws.regression_analyses(
 # This function returns Bayes factors, effect sizes, likelihood ratios, etc.
 r1_comparisons = ws.compare_models([
 	{'name': 'F1',
-		'h0': ws.build_model_expression("F2"), # doesn't include F1
+		'h0': ws.build_model_expression("F2"), # Null hypothesis doesn't include F1
 		'h1': full_model}, 
 	{'name': 'F2',
-		'h0': ws.build_model_expression("F1"), # doesn't include F2
+		'h0': ws.build_model_expression("F1"), # Null hypothesis doesn't include F2
 		'h1': full_model}
 	], Zcc, comp_scores, smf.ols, n_comparisons=15)
 
@@ -854,15 +878,13 @@ r1_comparisons = ws.compare_models([
 # regressors of interest (not going to keep parameters etc. for nuisance vars)
 res1_ = (r1_regressions
 	.join(r1_comparisons.loc[:, comp_columns])
-	.loc[r1_comparisons.index, :]
 	.rename(columns={'value': 'B'})
+	.loc[r1_comparisons.index, column_order]
 )
 
 save_and_display_table(res1_, 'Table_4')
 
-#%% [markdown]
-# ### Generate figures to summarize these results
-#%%
+# Generate figures to summarize these results...
 plot_cols = ['tstat', 'p_adj', 'BF10']
 renamer = {'group': 'COVID+ vs CTRL'}
 res1_fig = (
@@ -902,33 +924,43 @@ qq_f = wp.qq_plots(qq_res, qq_nms,
 save_and_display_figure(qq_f, 'Figure_S3')
 
 #%% [markdown]
-# ## Supplementary Analysis - Include Covariates
-# - They've already been regressed out, but let's try anyways.
+# ## Supplementary Analysis
+#  
+# Let's include a bnuch of covariates in the regression models to see if they 
+# explain the relationship(s) between F1 and cognitive scores. We'll include all
+# the coviariates of no interest (Xcovar) that are common to both groups 
+# (age, sex, level of education, SES, exercise, smoking, alcohol, other 
+# stimulants, and other depressants). These have already been regressed out
+# using parameters estimated from the control group, but there might be 
+# residual effects.
+#
+# Also, we'll include a binary predictor that indicates the presence of a pre-
+# exisiting medical condition.
 
 #%% 
 # Include covariates in the model expression(s)
 
-full_model_w_covar = ws.build_model_expression(fnames, Xcovar)
-
+full_model_w_covar = ws.build_model_expression(fnames, Xcovar, 'pre_existing_condition')
+print(f"Full model: {full_model_w_covar}")
 r1b_regressions, _ = ws.regression_analyses(
 		full_model_w_covar, comp_scores, Zcc, n_comparisons=15)
 
 r1b_comparisons = ws.compare_models([
 	{'name': 'F1',
-		'h0': ws.build_model_expression('F2', Xcovar), # doesn't include F1, 
+		'h0': ws.build_model_expression('F2', Xcovar, 'pre_existing_condition'),
 		'h1': full_model_w_covar}, 
 	{'name': 'F2',
-		'h0': ws.build_model_expression('F1', Xcovar), # doesn't include F2, 
+		'h0': ws.build_model_expression('F1', Xcovar, 'pre_existing_condition'),
 		'h1': full_model_w_covar}
 	], Zcc, comp_scores, smf.ols, n_comparisons=15)
 
 res1b_ = (r1b_regressions
 	.join(r1b_comparisons.loc[:, comp_columns])
-	.loc[r1b_comparisons.index, :]
 	.rename(columns={'value': 'B'})
+	.loc[r1b_comparisons.index, column_order]
 )
 
-save_and_display_table(res1b_, 'Table_S6')
+save_and_display_table(res1b_, 'Table_S8')
 
 #%% [markdown]
 # ## COVID+ Subgroup Analyses: Hospitalised vs Non-Hospitalised Cases
@@ -1010,46 +1042,54 @@ save_and_display_figure(f5b, 'Figure_5B')
 
 #%% [markdown]
 # ### Directly Compare Non-/Hospitalised Groups
+# Description here...
+#
 #%% 
 # Two-sample t-tests and stats
-r5a_ttests = (ws
+r7_ttests = (ws
 	.two_sample_ttests('hospital_stay', comp_scores+fnames, Zcc, n_comparisons=7)
 	.droplevel('contrast')
 	.rename(columns={'cohen-d': 'd'})
 )
 
-save_and_display_table(r5a_ttests[ttest_columns], 'Table_S7')
+save_and_display_table(r7_ttests[ttest_columns], 'Table_S9')
 
 #%% [markdown]
 # ### Compare Each Non-/Hospitalised Group to Controls
 #%% 
 # Two-sample t-tests and stats, etc.
-r5b_ttests = {}
+r8_ttests = {}
 for grp, grp_data in Zcc.groupby('hospital_stay'):
 	Zall = pd.concat([grp_data, Zctrl], keys=['CC', 'SS'], names=['study'])
-	r5b_ttests[grp] = (ws
+	r8_ttests[grp] = (ws
 		.two_sample_ttests('study', comp_scores, Zall, n_comparisons=10)
 		.droplevel('contrast')
 		.rename(columns={'cohen-d': 'd'})
 	)
-r5b_ttests = pd.concat(r5b_ttests.values(), axis=0, keys=r5b_ttests.keys(), names=['hospital_stay'])
+r8_ttests = pd.concat(r8_ttests.values(), axis=0, keys=r8_ttests.keys(), names=['hospital_stay'])
 
-save_and_display_table(r5b_ttests[ttest_columns], 'Table_S8')
+save_and_display_table(r8_ttests[ttest_columns], 'Table_S10')
 
 #%% [markdown]
 # ### Include Hospitalisation Status in Regression Models
-
+# Description
+#
 # %% 
 # Transform it into a binary variable, where 1 = "Yes" (hospitalised)
-Zcc['hospital_stay'] = OneHotEncoder(drop=['No']).fit_transform(Zcc[['hospital_stay']]).todense()
+if Zcc.hospital_stay.dtype == 'category':
+	Zcc['hospital_stay'] = (
+		OneHotEncoder(drop=['No'])
+		.fit_transform(Zcc[['hospital_stay']])
+		.todense()
+	)
 
-#%%
 full_model_w_hosp = ws.build_model_expression(fnames, 'hospital_stay')
+print(f"Model Expression: {full_model_w_hosp}")
 
-r4_regressions, _ = ws.regression_analyses(
+rH_regressions, _ = ws.regression_analyses(
 	full_model_w_hosp, comp_scores, Zcc, n_comparisons=15)
 
-r4_comparisons = ws.compare_models([
+rH_comparisons = ws.compare_models([
 	{'name': 'F1',
 		'h0': ws.build_model_expression('F2', 'hospital_stay'), # without F1
 		'h1': full_model_w_hosp}, 
@@ -1061,23 +1101,23 @@ r4_comparisons = ws.compare_models([
 		'h1': full_model_w_hosp}
 	], Zcc, comp_scores, smf.ols, n_comparisons=15)
 
-res4_ = (r4_regressions
-	.join(r4_comparisons.loc[:, comp_columns])
+resH_ = (rH_regressions
+	.join(rH_comparisons.loc[:, comp_columns])
 	.rename(columns={'value': 'B'})
-	.loc[r4_comparisons.index, column_order]
+	.loc[rH_comparisons.index, column_order]
 	.rename({'hospital_stay': 'Hospital'})
 )
 
-save_and_display_table(res4_, 'Table_S9')
+save_and_display_table(resH_, 'Table_S11')
 
-r4_t_fig = wp.create_stats_figure(
-	res4_, 'tstat', 'p_adj', stat_range=[-6.3, 6.3],
+rH_t_fig = wp.create_stats_figure(
+	resH_, 'tstat', 'p_adj', stat_range=[-6.3, 6.3],
 	vertline=2, diverging=True, correction='bonferroni')
-r4_b_fig = wp.create_bayes_factors_figure(
-	res4_, suppress_h0=True, vertline=2)
+rH_b_fig = wp.create_bayes_factors_figure(
+	resH_, suppress_h0=True, vertline=2)
 
-r4_t_fig.savefig('./outputs/images/Figure_6a.svg')
-r4_b_fig.savefig('./outputs/images/Figure_6b.svg')
+rH_t_fig.savefig('./outputs/images/Figure_6a.svg')
+rH_b_fig.savefig('./outputs/images/Figure_6b.svg')
 
 #%% [markdown]
 # ## Other Exploratory Analyses
@@ -1085,26 +1125,33 @@ r4_b_fig.savefig('./outputs/images/Figure_6b.svg')
 
 #%%
 # Variables to test...
-vars_ = fnames+mhvars+Xcovar+['WHO_COVID_severity']
+vars_ = fnames+mhvars+Xcovar+['pre_existing_condition']
 
-r5_regressions = [ws.regression_analyses(f"%s ~ {v}", comp_scores, Zcc) for v in vars_]
-r5_regressions = [r[0].drop('Intercept', level='contrast') for r in r5_regressions]
-r5_regressions = pd.concat(r5_regressions, axis=0)
-r5_regressions = ws.adjust_pvals(
-	r5_regressions, adj_across='all', adj_type='fdr_bh')
+rEXPL_regressions = [ws.regression_analyses(f"%s ~ {v}", comp_scores, Zcc) for v in vars_]
+rEXPL_regressions = [r[0].drop('Intercept', level='contrast') for r in rEXPL_regressions]
+rEXPL_regressions = pd.concat(rEXPL_regressions, axis=0)
+rEXPL_regressions = ws.adjust_pvals(
+	rEXPL_regressions, adj_across='all', adj_type='fdr_bh')
 
 models = [{'name': v, 'h0': f"%s ~ 1", 'h1': f"%s ~ {v}"} for v in vars_]
-r5_comparisons = ws.compare_models(models, Zcc, comp_scores, smf.ols)
+rEXPL_comparisons = ws.compare_models(models, Zcc, comp_scores, smf.ols)
 
-f5_ts = wp.create_stats_figure(
-	r5_regressions, 'tstat', 'p_adj', diverging=True, vertline=2, 
+rEXPL_ts = wp.create_stats_figure(
+	rEXPL_regressions, 'tstat', 'p_adj', diverging=True, vertline=2, 
 	correction='FDR', stat_range=[-6, 6])
 
-f5_bf = wp.create_bayes_factors_figure(r5_comparisons, 
+rEXPL_bf = wp.create_bayes_factors_figure(rEXPL_comparisons, 
 	vertline=2, cell_scale=0.6)
 
-f5_ts.savefig('./outputs/images/Figure_S4A.svg')
-f5_bf.savefig('./outputs/images/Figure_S4B.svg')
+rEXPL_ts.savefig('./outputs/images/Figure_S5A.svg')
+rEXPL_bf.savefig('./outputs/images/Figure_S5B.svg')
+
+rEXPL_bf_table = (rEXPL_comparisons['BF10']
+	.unstack('score')
+	.loc[vars_, comp_scores]
+)
+
+rEXPL_bf_table.to_csv('./outputs/tables/Table_S12.csv')
 
 # %% [markdown]
 # QQ-plots of scores, by hospitalisation
