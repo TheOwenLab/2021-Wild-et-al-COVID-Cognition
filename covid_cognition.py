@@ -229,10 +229,12 @@ test_scores = df_
 Yvar = test_scores+comp_scores
 
 #%% [markdown]
-# ## Relationship between socio-demographic variables and cognitive performance.
-# - Estimate these from the control dataset using linear regression
+# ## Relationship between covariate (nuisnace variables) and cognitive scores.
+# Here, we'll do an an exploratory analysis to see which of our common 
+# covariates have a relationship with cognitive scores -- in the control group.
+# Simply, we will run a linear regression model for each test and composite
+# score that includes all of these variables as predictors.
 #%%
-
 # Temporary duplication of the control dataset, because we modify the age 
 # mean-centre the age variable for this exploratory analysis.
 Zctrl_ = Zctrl.copy()
@@ -241,9 +243,12 @@ Zctrl_.age -= Zctrl_.age.mean()
 covar_model = ws.build_model_expression(Xcovar)
 print(f"Regression formula: {covar_model}")
 
+# Run the linear regression models - this does one for each variable specified
+# in Yvar, which is a list of all test and composite scores.
+r, _ = ws.regression_analyses(covar_model, Yvar, Zctrl_)
+
 # Generate a summary figure to show significant (p < 0.05, uncorrected) 
 # relationships between covariates and cognitive scores (just exploratory)
-r, _ = ws.regression_analyses(covar_model, Yvar, Zctrl_)
 f = wp.create_stats_figure(
 	r.drop('Intercept', level='contrast', axis=0),
 	'tstat', 'p', stat_range=[-10, 10], diverging=5, vertline=5)
@@ -256,8 +261,12 @@ from sklearn.preprocessing import PolynomialFeatures
 # Transform covariates (X) variables specifying:
 #	- age, as a linear and quadratic term (see age_tfm)
 #	- level of education, as a binary variable with 1 = False
-#	- SES growing up, as binary variable with 1 = Below poverty level
-# 	- nicotine, as binary with 1 = smokes > 0 cigarettes per day
+#	- SES growing up, as binary variable with 1 indicating  "Below poverty level"
+# 	- nicotine, as binary with 1 indicating smokes > 0 cigarettes per day
+# 	- exercise, as binary with 1 indicating at least once per week
+# 	- cannabis, as binary with 1 indicating > 1 unit per day
+# 	- stimulants, as binary with 1 indicating at least once in the last 4 wks
+# 	- depressants, as binary with 1 indicating at least once in the last 4 wks
 
 age_q_tfm = Pipeline(steps=[
 	('center', StandardScaler(with_mean=True, with_std=False)),
@@ -275,12 +284,12 @@ x_tfms = [
 
 Xtfm = ColumnTransformer(x_tfms, sparse_threshold=0).fit(Zctrl[Xcovar])
 
-# This is an alternative transformer for the covariates that only mean-centres
-# the age variable (instead of quadratic term, like above.)
+# Alternate transformer that just mean-centres age.
 age_l_tfm = StandardScaler(with_mean=True, with_std=False)
 x_tfms_alt = x_tfms.copy()
 x_tfms_alt[0] = ('cont',  age_l_tfm, ['age'])
 
+# Create and fit the alternate covariate transformer
 Xtfm_ = ColumnTransformer(x_tfms_alt, sparse_threshold=0).fit(Zctrl[Xcovar])
 
 # Transform the covariate columns into a numeric matrix
@@ -294,10 +303,6 @@ Xctrl = np.c_[Xctrl, np.ones(Xctrl.shape[0])]
 # We'll use these to correct the scores from both groups by subtracting the 
 # expected effects (i.e., regressing them out)
 Bctrl = np.dot(pinv(Xctrl), Zctrl[Yvar])
-
-# Adjust the CTRL group for the covariates...
-Yctrl_hat = Xctrl.dot(Bctrl)
-Zctrl[Yvar] -= Yctrl_hat
 
 #%% [markdown]
 # ## COVID+ Sample
@@ -480,7 +485,15 @@ factor_similarities = (pd
 
 factor_similarities.to_csv('./outputs/tables/Table_S5.csv')
 display(factor_similarities)
+#%% TEST CFA
 
+from factor_analyzer import ModelSpecification, ModelSpecificationParser, ConfirmatoryFactorAnalyzer
+
+mm = ModelSpecificationParser.parse_model_specification_from_array(
+	Zcc_[df_], loadings_ctrl.values
+)
+
+cfa = ConfirmatoryFactorAnalyzer(mm, max_iter=1000).fit(Zcc_[df_].values)
 #%%
 
 # Standardizes all score features using the transformer that was fitted on the 
@@ -493,35 +506,97 @@ Zcc[domains] = pca_dmn_ctrl.transform(Zcc[df_])
 Zcc['processing_speed'] = pca_spd_ctrl.transform(Zcc[tf_])
 Zcc['overall'] = overall_tfm.transform(Zcc[df_].mean(axis=1).values.reshape(-1,1))
 
-# Adjust for effects of covariates
-Xcc = Xtfm.transform(Zcc[Xcovar])
-Xcc = np.c_[Xcc, np.ones(Xcc.shape[0])]
-Ycc_hat = Xcc.dot(Bctrl)
-Zcc[Yvar] -= Ycc_hat
+#%%
+
+Zcc_ = Zcc.copy()
+Zcc_[Xcovar] = Xtfm_.transform(Zcc_[Xcovar])
+Zcc_['GAD_flag'] = Zcc_['GAD2'] >= 3
+Zcc_['PHQ_flag'] = Zcc_['PHQ2'] >= 3
+
+r, _ = ws.regression_analyses("%s ~ age + sex + post_secondary + SES", comp_scores, Zcc_)
+r = ws.adjust_pvals(r, adj_across='all', adj_type='fdr_bh')
+
+# Generate a summary figure to show significant (p < 0.05, uncorrected) 
+# relationships between covariates and cognitive scores (just exploratory)
+f = wp.create_stats_figure(
+	r.drop('Intercept', level='contrast', axis=0), 'tstat', 'p_adj', 
+	correction='fdr_bh', stat_range=[-10, 10], diverging=True, vertline=2)
+
 
 Zcc = Zcc.rename(columns={'WHOi': 'WHO_COVID_severity'})
 
 #%%
 # Counts of responses for COVID-19 related questions
 covid_vars = ['symptoms', 'hospital_stay', 'daily_routine', 'supplemental_O2_hospital', 'ICU_stay', 'ventilator']
-q_counts = Zcc[covid_vars]
+q_counts = Zcc[covid_vars].copy()
 q_counts.loc[:, 'symptoms'] = q_counts['symptoms'].map({True: "Yes", False: "No"})
 q_counts = [q_counts[c].value_counts() for c in covid_vars]
 q_counts = pd.concat(q_counts, axis=1).T
 q_counts
 
 #%%
-# Counts of responses for socio-demographic questions
+# Distributions and frequencies of variables pertaining to socio-
+# demographics, other covariates, etc.
+
+# These need to be coded in the control dataset
+lang_vars = {l: f"speak_{l.lower()}" for l in ['English', 'French', 'Spanish']}
+for l, v in lang_vars.items():
+	Qctrl[v] = Qctrl['languages_spoken'].map(
+		lambda x: l in x if isinstance(x, str) else False)
+lang_vars = list(lang_vars.values())
+
+# Join the two datasets together so we can do .groupby etc.
 covar_data = pd.concat(
-	[Zctrl[Xcovar], Zcc[Xcovar]], axis=0, 
+	[Zctrl[Xcovar].join(Qctrl[['country']+lang_vars]), 
+	 Zcc[Xcovar+lang_vars+['country']]], axis=0, 
 	names=['dataset'], keys=['Control', 'COVID+'])
 
-for v in ['sex', 'post_secondary', 'SES']:
-	display(pd.DataFrame(
-		covar_data.groupby('dataset')[v].value_counts()
-	).rename(columns={v: 'count'}))
+grp_counts = (covar_data
+	.groupby('dataset')
+	.agg('count')
+	.iloc[:, 0]
+)
 
-display(covar_data.groupby(['dataset']).agg(['mean', 'std']))
+catg_vars = pd.concat(
+	{ v: (covar_data
+			.groupby('dataset')[v]
+			.value_counts()
+			.to_frame()
+			.rename(columns={v: 'count'})
+			.assign(pct = lambda x: x['count'] / grp_counts * 100)
+			.unstack('dataset')
+			.swaplevel(axis=1).sort_index(axis=1)
+		) for v in Xcovar[1:] + lang_vars
+	}
+)
+display(catg_vars)
+
+cont_vars = pd.concat(
+	{ v: (covar_data
+			.groupby('dataset')
+			.agg(['mean', 'std'])[[v]]
+			.T
+			.unstack(1)
+		) for v in ['age']
+	}
+)
+display(cont_vars)
+
+top5_countries = (pd.concat(
+		{ dataset:
+			(covar_data
+				.xs(dataset)
+				.loc[:, 'country']
+				.value_counts(ascending=False)
+				.iloc[0:5]
+			) for dataset in ['COVID+', 'Control']
+		}, names=['dataset'])
+	.to_frame()
+	.rename(columns={'country': 'count'})
+	.assign(pct = lambda x: x['count'] / grp_counts * 100)
+)
+display(top5_countries)
+
 
 #%% [markdown]
 # ### COVID+ Sample: GAD-2 & PHQ-2 Summary
@@ -535,9 +610,9 @@ print(f"PHQ2 >= 3, N = {n_PHQ_flag} ({n_PHQ_flag/Zcc.shape[0]*100:.01f}%)")
 #%% [markdown]
 # ## COVID+ Sample: Health Measures
 #%%
-# The questionnaire variables we are analyzing
+# The questionnaire variables we are incorporating into the factor analysis:
 fvars = mhvars + subjvars + sf36vars + ['WHO_COVID_severity', 'days_since_test']
-fdata = Zcc[fvars].copy().dropna()
+fdata = Zcc[fvars].copy().dropna()	# copy it so we don't mess up the original df
 
 var_rename = {
 	'baseline_functioning_Yes': 'subj_baseline',
@@ -686,7 +761,7 @@ r0_comparisons = ws.compare_models([
 	Zcc, fnames, smf.ols, n_comparisons=8)
 
 # Combine and reorganize the results tables
-res0 = (r0_regressions
+r0_table = (r0_regressions
 	.drop('Intercept', level='contrast')
 	.join(r0_comparisons.loc[:, comp_columns])
 	.rename(columns={'value': 'B'})
@@ -695,13 +770,13 @@ res0 = (r0_regressions
 
 # Display stats figure (here)
 f1_ts = wp.create_stats_figure(
-	res0, 'tstat', 'p_adj', diverging=True, vertline=None, 
+	r0_table, 'tstat', 'p_adj', diverging=True, vertline=None, 
 	correction='bonferroni')
 
-f1_bf = wp.create_bayes_factors_figure(res0, cell_scale=0.6)
+f1_bf = wp.create_bayes_factors_figure(r0_table, cell_scale=0.6)
 
 # Save / show the stats table
-save_and_display_table(res0, 'Table_S6')
+save_and_display_table(r0_table, 'Table_S6')
 
 #%% [markdown]
 # ### Plots of Factors Scores vs. Covariates
@@ -755,9 +830,59 @@ ses = wp.raincloud_plot(
 	vio_args = {'spanmode': 'soft'}, sym_offset = 7,
 )
 ses
+#%%
+
+r, _ = ws.regression_analyses("%s ~ F1 + F2", comp_scores, Zcc_)
+# r = ws.adjust_pvals(r, adj_across='all', adj_type='fdr_bh')
+
+# Generate a summary figure to show significant (p < 0.05, uncorrected) 
+# relationships between covariates and cognitive scores (just exploratory)
+f = wp.create_stats_figure(
+	r.drop('Intercept', level='contrast', axis=0), 'tstat', 'p_adj', 
+	correction='fdr_bh', stat_range=[-10, 10], diverging=True, vertline=2)
+
+# Add an intercept
+Xfcc = np.c_[Zcc[fnames], np.ones(Zcc.shape[0])]
+
+# Solve for the the linear regression parameters. 
+# We'll use these to correct the scores from both groups by subtracting the 
+# expected effects (i.e., regressing them out)
+Bfcc = np.dot(pinv(Xfcc), Zcc[fnames])
+
+Zcc2 = Zcc.copy()
+Zcc2[fnames] -= Xfcc.dot(Bfcc)
+
+# Let's run a linear regression that predicts each composite cognitive score
+# from each variable in the list. Then, adjust all the coefficient p-values
+# (5 x # of vars) using false discovery rate.
+r = [ws.regression_analyses(f"%s ~ {v}", comp_scores, Zcc) for v in fnames]
+r = [r[0].drop('Intercept', level='contrast') for r in r]
+r = pd.concat(r, axis=0)
+r = ws.adjust_pvals(r, adj_across='all', adj_type='fdr_bh')
+r
+# # Here we'll do the Bayesian model comparisons, comparing a model with the 
+# # single variable (~ v) to an intercept-only model (~ 1).
+# models = [{'name': v, 'h0': f"%s ~ 1", 'h1': f"%s ~ {v}"} for v in vars_]
+# rEXPL_comparisons = ws.compare_models(models, Zcc, comp_scores, smf.ols)
 
 #%% [markdown]
 # ## COVID+ vs. Control - Comparisons of Cognitive Performance
+
+#%%
+
+# Before comparing the groups, we will correct for all the estimated
+# effects of those confounding variables.
+
+# Adjust the CTRL group for the covariates...
+Yctrl_hat = Xctrl.dot(Bctrl)
+Zctrl[Yvar] -= Yctrl_hat
+
+# Adjust the COVID+ group for the covariates...
+Xcc = Xtfm.transform(Zcc[Xcovar])
+Xcc = np.c_[Xcc, np.ones(Xcc.shape[0])]
+Ycc_hat = Xcc.dot(Bctrl)
+Zcc[Yvar] -= Ycc_hat
+
 #%% 
 # First, perform the t-tests comparing each composite score between groups,
 # where group is specified by the 'study' column. Manually specifying 15
