@@ -32,6 +32,7 @@ plt.rcParams['svg.fonttype'] = 'none'
 
 # Default layout for any plots created with Plotly
 _LINE_COLOUR = 'rgb(16, 16, 16)'
+_GRID_COLOUR =  'rgb(220, 220, 220)'
 def plotly_template():
     return {
         'layout': go.Layout(
@@ -41,17 +42,17 @@ def plotly_template():
             font = {'size': 10},
             xaxis = {
                 'zeroline': True,
-                'zerolinecolor': 'rgba(1,1,1,0.1)',
-                'zerolinewidth': 2,
+                'zerolinecolor': _GRID_COLOUR,
+                'zerolinewidth': 1,
                 'gridcolor': 'white',
                 'gridwidth': 1
             },
             yaxis = {
                 'zeroline': True, 
-                'zerolinewidth': 2,
+                'zerolinewidth': 1,
                 'gridwidth': 1,
-                'zerolinecolor': 'rgba(1,1,1,0.1)',
-                'gridcolor': 'rgba(1,1,1,0.1)',
+                'zerolinecolor': _GRID_COLOUR,
+                'gridcolor': _GRID_COLOUR,
             },
         ),
         'data': {
@@ -313,7 +314,7 @@ def raincloud_plot(
         df, plt_vars, grp_var, grp_order=None, grp_colours=cb.Dark2,
         do_box=True, do_pts=True, do_vio=True,
         box_args={}, pts_args={}, mrk_args={}, vio_args={},
-        pts_jitter=None, vio_jitter=False, sym_offset=0,
+        pts_jitter=None, vio_jitter=False, sym_offset=0, colour_offset=0,
         layout_args=None, legend_args=None
     ):
     """ This is a custom implementation of a "raincloud" plot, that displays
@@ -403,10 +404,11 @@ def raincloud_plot(
     o_vi = w_vi*0.5*(np.arange(0, n_grps)/(n_grps-1)) if n_grps > 0 else [0]
 
     jitter = .75/n_grps if pts_jitter is None else pts_jitter
-    grp_colours = cb.Dark2
 
     fig = go.Figure()
     w_plt = 0
+
+    grp_colours = grp_colours[colour_offset:]
 
     # This loop simply adds invisible traces so we have nice legend items
     for ig, g in enumerate(grp_order):
@@ -463,7 +465,8 @@ def raincloud_plot(
                     name = g,
                     marker_color = grp_colours[ig],
                     boxpoints = False,
-                    boxmean = True,
+                    boxmean = False,
+                    notched = False,
                     line = dict(
                         width=1,
                     ),

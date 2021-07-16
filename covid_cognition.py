@@ -48,7 +48,7 @@ from cbs_data.control_study import ControlStudy as CS # this is the CTRL dataset
 # Plotly for plotting
 import plotly
 import plotly.express as px
-
+import importlib
 from IPython.display import SVG, display
 
 # Display options for in this notebook
@@ -485,15 +485,7 @@ factor_similarities = (pd
 
 factor_similarities.to_csv('./outputs/tables/Table_S5.csv')
 display(factor_similarities)
-#%% TEST CFA
 
-from factor_analyzer import ModelSpecification, ModelSpecificationParser, ConfirmatoryFactorAnalyzer
-
-mm = ModelSpecificationParser.parse_model_specification_from_array(
-	Zcc_[df_], loadings_ctrl.values
-)
-
-cfa = ConfirmatoryFactorAnalyzer(mm, max_iter=1000).fit(Zcc_[df_].values)
 #%%
 
 # Standardizes all score features using the transformer that was fitted on the 
@@ -508,35 +500,38 @@ Zcc['overall'] = overall_tfm.transform(Zcc[df_].mean(axis=1).values.reshape(-1,1
 
 #%%
 
+# Exploratory analysis to show significant (uncorrected) relationships
+# between (uncorrected) cognitive scores in the COVID+ group and all the
+# various covariates.
+
 Zcc_ = Zcc.copy()
 Zcc_[Xcovar] = Xtfm_.transform(Zcc_[Xcovar])
-Zcc_['GAD_flag'] = Zcc_['GAD2'] >= 3
-Zcc_['PHQ_flag'] = Zcc_['PHQ2'] >= 3
+covar_model = ws.build_model_expression(Xcovar)
+print(f"Regression Model: {covar_model}")
 
-r, _ = ws.regression_analyses("%s ~ age + sex + post_secondary + SES", comp_scores, Zcc_)
-r = ws.adjust_pvals(r, adj_across='all', adj_type='fdr_bh')
+r, _ = ws.regression_analyses(covar_model, comp_scores, Zcc_)
 
 # Generate a summary figure to show significant (p < 0.05, uncorrected) 
 # relationships between covariates and cognitive scores (just exploratory)
 f = wp.create_stats_figure(
 	r.drop('Intercept', level='contrast', axis=0), 'tstat', 'p_adj', 
-	correction='fdr_bh', stat_range=[-10, 10], diverging=True, vertline=2)
-
+	correction=None, stat_range=[-10, 10], diverging=True, vertline=2)
 
 Zcc = Zcc.rename(columns={'WHOi': 'WHO_COVID_severity'})
 
 #%%
-# Counts of responses for COVID-19 related questions
+# Report the # of responses for COVID-19 related questions and pre-existing 
+# health conditions.
 covid_vars = ['symptoms', 'hospital_stay', 'daily_routine', 'supplemental_O2_hospital', 'ICU_stay', 'ventilator']
 q_counts = Zcc[covid_vars].copy()
 q_counts.loc[:, 'symptoms'] = q_counts['symptoms'].map({True: "Yes", False: "No"})
 q_counts = [q_counts[c].value_counts() for c in covid_vars]
 q_counts = pd.concat(q_counts, axis=1).T
-q_counts
+display(q_counts)
 
 #%%
-# Distributions and frequencies of variables pertaining to socio-
-# demographics, other covariates, etc.
+# Generate tables of distributions and frequencies for variables that
+# describe the two groups.
 
 # These need to be coded in the control dataset
 lang_vars = {l: f"speak_{l.lower()}" for l in ['English', 'French', 'Spanish']}
@@ -569,7 +564,7 @@ catg_vars = pd.concat(
 		) for v in Xcovar[1:] + lang_vars
 	}
 )
-display(catg_vars)
+save_and_display_table(catg_vars, 'Table_2a')
 
 cont_vars = pd.concat(
 	{ v: (covar_data
@@ -580,7 +575,7 @@ cont_vars = pd.concat(
 		) for v in ['age']
 	}
 )
-display(cont_vars)
+save_and_display_table(cont_vars, 'Table_2b')
 
 top5_countries = (pd.concat(
 		{ dataset:
@@ -595,8 +590,7 @@ top5_countries = (pd.concat(
 	.rename(columns={'country': 'count'})
 	.assign(pct = lambda x: x['count'] / grp_counts * 100)
 )
-display(top5_countries)
-
+save_and_display_table(top5_countries, 'Table_2c')
 
 #%% [markdown]
 # ### COVID+ Sample: GAD-2 & PHQ-2 Summary
@@ -706,6 +700,7 @@ table = (pd
 )
 
 table.to_csv(f"./outputs/tables/Table_S2.csv")
+display(table)
 
 # Visualize the factor structure with a chord plot
 f = chord_plot(
@@ -719,11 +714,6 @@ f = wp.correlogram(fdata0, subset=var_order, mask_diag=True)
 save_and_display_figure(f, 'Figure_S2')
 
 #%%
-# Concatenate the COVID+ and Control datasets for subsequent comparisons 
-# between groups
-Zall = pd.concat([Zcc, Zctrl], axis=0, keys=['CC', 'CTRL'], names=['study'])
-
-#%% 
 # Defines columns that will be used in various stats tables
 comp_columns = ['dR2', 'f2', 'BF10']					# model comparison stats
 regr_columns = ['B', 'tstat', 'df', 'p_adj', 'CI']		# regression parameters
@@ -734,12 +724,12 @@ column_order = regr_columns + comp_columns
 # ## Relationships Between Factor Scores and Covariates
 #%%
 Zcc_ = Zcc.copy()
-Zcc[Xcovar] = Xtfm_.transform(Zcc[Xcovar])
+Zcc_[Xcovar] = Xtfm_.transform(Zcc[Xcovar])
 
 # Build and estimate regression models for each health factor score
 # (fnames) using the expression: '~ age + sex + post_secondary + SES'.
 r0_regressions, _ = ws.regression_analyses(
-	'%s ~ age + sex + post_secondary + SES', fnames, Zcc, n_comparisons=8)
+	'%s ~ age + sex + post_secondary + SES', fnames, Zcc_, n_comparisons=8)
 
 # Then, we perform model comparisons where the null or reduced model (h0) does
 # not contain the variable of interest, whereas the alternative model (h1) DOES.
@@ -758,7 +748,7 @@ r0_comparisons = ws.compare_models([
 		'h0': '%s ~ age + sex + post_secondary', 
 		'h1': '%s ~ age + sex + post_secondary + SES' }],
 
-	Zcc, fnames, smf.ols, n_comparisons=8)
+	Zcc_, fnames, smf.ols, n_comparisons=8)
 
 # Combine and reorganize the results tables
 r0_table = (r0_regressions
@@ -781,9 +771,10 @@ save_and_display_table(r0_table, 'Table_S6')
 #%% [markdown]
 # ### Plots of Factors Scores vs. Covariates
 #%% 
-import plotly.graph_objects as go
-bwmap = wc.create_mpl_cmap(plotly.colors.sequential.gray, alpha=1.0)
 
+from plotly.colors import colorbrewer as cb
+
+Zcc_ = Zcc.copy()
 age_edges = np.array([18, 30, 60, 100])
 age_bins = ['18-30', '30-60', '60+']
 Zcc_['age_bin'] = pd.cut(Zcc_['age'], age_edges, labels=age_bins)
@@ -798,26 +789,27 @@ age_plot = wp.raincloud_plot(
 	Zcc_, ['F1', 'F2'], 'age_bin', grp_order=age_bins,
 	vio_args = {'spanmode': 'soft'},
 )
-age_plot
+save_and_display_figure(age_plot, 'Figure_2a')
 
 wp.rc_layout.update(boxgroupgap = 0.4, width = 280)
 wp.rc_yaxis.update(showticklabels = False, title = None)
 wp.rc_layout['margin'].update(l=30)
 wp.rc_title.update(text = 'B) Post Secondary')
 
-edu = wp.raincloud_plot(
+edu_plot = wp.raincloud_plot(
 	Zcc_, ['F1', 'F2'], 'post_secondary',
+	grp_colours = [cb.Paired[c] for c in [1,3]],
 	vio_args = {'spanmode': 'soft'}, sym_offset = 2
 )
-edu
+save_and_display_figure(edu_plot, 'Figure_2b')
 
 wp.rc_title.update(text = 'C) Sex')
-sex = wp.raincloud_plot(
-	Zcc_, ['F1', 'F2'], 'sex', 
-	vio_args = {'spanmode': 'soft'}, sym_offset = 5
+sex_plot = wp.raincloud_plot(
+	Zcc_, ['F1', 'F2'], 'sex', colour_offset = 2,
+	vio_args = {'spanmode': 'soft'}, sym_offset = 5, 
+	mrk_args = {'size': 6}
 )
-sex
-
+save_and_display_figure(sex_plot, 'Figure_2c')
 
 Zcc2 = Zcc_.copy()
 Zcc_['SES'] = Zcc_['SES'].cat.rename_categories(
@@ -825,51 +817,17 @@ Zcc_['SES'] = Zcc_['SES'].cat.rename_categories(
 )
 
 wp.rc_title.update(text = 'D) SES (poverty level)')
-ses = wp.raincloud_plot(
-	Zcc_, ['F1', 'F2'], 'SES',
+ses_plot = wp.raincloud_plot(
+	Zcc_, ['F1', 'F2'], 'SES', colour_offset = 4,
 	vio_args = {'spanmode': 'soft'}, sym_offset = 7,
+	mrk_args = {'size': 6}
 )
-ses
-#%%
-
-r, _ = ws.regression_analyses("%s ~ F1 + F2", comp_scores, Zcc_)
-# r = ws.adjust_pvals(r, adj_across='all', adj_type='fdr_bh')
-
-# Generate a summary figure to show significant (p < 0.05, uncorrected) 
-# relationships between covariates and cognitive scores (just exploratory)
-f = wp.create_stats_figure(
-	r.drop('Intercept', level='contrast', axis=0), 'tstat', 'p_adj', 
-	correction='fdr_bh', stat_range=[-10, 10], diverging=True, vertline=2)
-
-# Add an intercept
-Xfcc = np.c_[Zcc[fnames], np.ones(Zcc.shape[0])]
-
-# Solve for the the linear regression parameters. 
-# We'll use these to correct the scores from both groups by subtracting the 
-# expected effects (i.e., regressing them out)
-Bfcc = np.dot(pinv(Xfcc), Zcc[fnames])
-
-Zcc2 = Zcc.copy()
-Zcc2[fnames] -= Xfcc.dot(Bfcc)
-
-# Let's run a linear regression that predicts each composite cognitive score
-# from each variable in the list. Then, adjust all the coefficient p-values
-# (5 x # of vars) using false discovery rate.
-r = [ws.regression_analyses(f"%s ~ {v}", comp_scores, Zcc) for v in fnames]
-r = [r[0].drop('Intercept', level='contrast') for r in r]
-r = pd.concat(r, axis=0)
-r = ws.adjust_pvals(r, adj_across='all', adj_type='fdr_bh')
-r
-# # Here we'll do the Bayesian model comparisons, comparing a model with the 
-# # single variable (~ v) to an intercept-only model (~ 1).
-# models = [{'name': v, 'h0': f"%s ~ 1", 'h1': f"%s ~ {v}"} for v in vars_]
-# rEXPL_comparisons = ws.compare_models(models, Zcc, comp_scores, smf.ols)
+save_and_display_figure(ses_plot, 'Figure_2d')
 
 #%% [markdown]
 # ## COVID+ vs. Control - Comparisons of Cognitive Performance
 
 #%%
-
 # Before comparing the groups, we will correct for all the estimated
 # effects of those confounding variables.
 
@@ -882,6 +840,10 @@ Xcc = Xtfm.transform(Zcc[Xcovar])
 Xcc = np.c_[Xcc, np.ones(Xcc.shape[0])]
 Ycc_hat = Xcc.dot(Bctrl)
 Zcc[Yvar] -= Ycc_hat
+
+# Concatenate the COVID+ and Control datasets for subsequent comparisons 
+# between groups
+Zall = pd.concat([Zcc, Zctrl], axis=0, keys=['CC', 'CTRL'], names=['study'])
 
 #%% 
 # First, perform the t-tests comparing each composite score between groups,
@@ -927,6 +889,8 @@ layout_args = {
 		'yanchor': 'top', 'xanchor': 'left', 'x': 1.02, 'y': 1.0,
 	},
 }
+import plotly.graph_objects as go
+bwmap = wc.create_mpl_cmap(plotly.colors.sequential.gray, alpha=1.0)
 grayscale_map = wc.to_RGB_255(bwmap(np.linspace(0.3, 1.0, 3)))
 
 f3a, _ = wp.means_plot(
@@ -934,7 +898,7 @@ f3a, _ = wp.means_plot(
 	group_color_sequence=grayscale_map,
 	bar_args=bar_args, layout_args=layout_args 
 )
-save_and_display_figure(f3a, 'Figure_3A')
+save_and_display_figure(f3a, 'Figure_o3A')
 
 layout_args['legend']['title'] = 'F2 (mental health)'
 f3b, _ = wp.means_plot(
@@ -942,7 +906,44 @@ f3b, _ = wp.means_plot(
 	group_color_sequence=grayscale_map,
 	bar_args=bar_args, layout_args=layout_args 
 )
-save_and_display_figure(f3b, 'Figure_3B')
+save_and_display_figure(f3b, 'Figure_o3B')
+
+#%%
+# Raincloud plots for cognitive scores by health factor
+
+viridis_map = [plotly.colors.sequential.Viridis_r[i] for i in [2,5,8]]
+
+wp.rc_title.update(text = '')
+
+wp.rc_layout.update(
+	width=800,
+	margin={'b': 30, 't': 40, 'l': 60, 'r': 20})
+
+wp.rc_legend.update(
+	title={
+		'text': 'Overall Physical Health (F1)',
+	},
+	xanchor='right', yanchor='bottom', x=1, y=1,
+)
+
+f1_bin_plot = wp.raincloud_plot(
+	Zcc, comp_scores, 'F1_bin', grp_order=labels,
+	grp_colours = viridis_map,
+	vio_args = {'spanmode': 'soft'},
+)
+save_and_display_figure(f1_bin_plot, 'Figure_n3a')
+
+wp.rc_legend.update(
+	title={
+		'text': 'Mental Health & Wellness (F2)',
+	},
+)
+f1_bin_plot = wp.raincloud_plot(
+	Zcc, comp_scores, 'F2_bin', grp_order=labels,
+	grp_colours = viridis_map,
+	vio_args = {'spanmode': 'soft'},
+)
+save_and_display_figure(f1_bin_plot, 'Figure_n3b')
 
 #%% [markdown]
 # ## COVID+ Binned Groups vs. Controls
@@ -1030,7 +1031,7 @@ f1_ts = wp.create_stats_figure(
 f1_bf = wp.create_bayes_factors_figure(res1_fig, suppress_h0=True, vertline=2)
 
 f1_ts.savefig('./outputs/images/Figure_4A.svg')
-f1_bf.savefig('./outputs/images/Figure_5B.svg')
+f1_bf.savefig('./outputs/images/Figure_4B.svg')
 
 #%% [markdown]
 # ### QQ-Plots
@@ -1164,6 +1165,30 @@ f5b, m = wp.means_plot(
 	bar_args=bar_args, layout_args=layout_args,
 )
 save_and_display_figure(f5b, 'Figure_5B')
+#%% [markdown]
+# Now do the raincloud plots for these figures...
+#%%
+wp.rc_title.update(text="")
+wp.rc_layout.update(
+	width=290, boxgroupgap = 0.4,
+	margin={'b': 30, 't': 20, 'l': 50, 'r': 20})
+
+hosp_hf_plots = wp.raincloud_plot(
+	Zcc, fnames, 'hospital_stay', grp_order=['Yes', 'No'],
+	grp_colours = plotly.colors.qualitative.Set1,
+	vio_args = {'spanmode': 'soft'},
+	mrk_args = {'size': 4, 'opacity': 0.5}
+)
+save_and_display_figure(hosp_hf_plots, 'Figure_n5a')
+
+wp.rc_layout.update(width=600)
+hosp_cog_plots = wp.raincloud_plot(
+	Zcc, comp_scores, 'hospital_stay', grp_order=['Yes', 'No'],
+	grp_colours = plotly.colors.qualitative.Set1,
+	vio_args = {'spanmode': 'soft'},
+	mrk_args = {'size': 4, 'opacity': 0.5}
+)
+save_and_display_figure(hosp_cog_plots, 'Figure_n5b')
 
 #%% [markdown]
 # ### Directly Compare Non-/Hospitalised Groups
