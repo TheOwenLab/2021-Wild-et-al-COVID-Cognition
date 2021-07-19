@@ -18,7 +18,20 @@ from statsmodels.formula.api import logit, mnlogit, ols
 
 idx = pd.IndexSlice
 
-def build_model_expression(regressors):
+def flatten(l):
+    """ Recursively flattens a list of lists that might have strings, without
+        unpacking all the characters in the strings.
+        See:
+        https://stackoverflow.com/questions/17864466/flatten-a-list-of-strings-and-lists-of-strings-and-lists-in-python
+    """
+    from collections.abc import Iterable
+    for el in l:
+        if isinstance(el, Iterable) and not isinstance(el, (str, bytes)):
+            yield from flatten(el)
+        else:
+            yield el
+
+def build_model_expression(*regressors):
     """ Given a list (or set) of strings that are variables in a dataframe, builds an expression
         (i.e., a string) that specifies a model for multiple regression. The dependent variable (y)
         is filled with '%s' so that it can replaced as in a format string.
@@ -36,6 +49,9 @@ def build_model_expression(regressors):
     """
     if len(regressors) == 0:
         regressors = ['1']
+    else:
+        regressors = list(flatten(regressors))
+
     return '%s ~ '+'+'.join(regressors)
 
 

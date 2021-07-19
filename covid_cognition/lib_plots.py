@@ -16,6 +16,8 @@ import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 
+from plotly.colors import colorbrewer as cb
+
 from .lib_stats import f_1way_pval
 from .lib_colours import D1_CMAP, D2_CMAP, D3_CMAP, D4_CMAP
 
@@ -30,15 +32,17 @@ plt.rcParams['svg.fonttype'] = 'none'
 
 # Default layout for any plots created with Plotly
 _LINE_COLOUR = 'rgb(16, 16, 16)'
+_GRID_COLOUR =  'rgb(220, 220, 220)'
 def plotly_template():
     return {
         'layout': go.Layout(
-            plot_bgcolor = 'rgba(1,1,1,0.1)',
+            # plot_bgcolor = 'rgba(1,1,1,0.1)',
+            plot_bgcolor = 'white',
             font_family = 'sans-serif',
             font = {'size': 10},
             xaxis = {
                 'zeroline': True,
-                'zerolinecolor': _LINE_COLOUR,
+                'zerolinecolor': _GRID_COLOUR,
                 'zerolinewidth': 1,
                 'gridcolor': 'white',
                 'gridwidth': 1
@@ -47,8 +51,8 @@ def plotly_template():
                 'zeroline': True, 
                 'zerolinewidth': 1,
                 'gridwidth': 1,
-                'zerolinecolor': 'white',
-                'gridcolor': 'white',
+                'zerolinecolor': _GRID_COLOUR,
+                'gridcolor': _GRID_COLOUR,
             },
         ),
         'data': {
@@ -273,6 +277,269 @@ def create_bayes_factors_figure(results, log_stats=True,
                facecolor='lightgray', edgecolor='lightgray')
 
     return figure
+
+# The following dicts (prefixed with rc_) are default options for the raincloud
+# plots. Putting them here cleans up the main notebook, but we can still update
+# values in order to change the plots when needed.
+
+rc_title = {
+	'pad': {'b': 10, 'l': 10},
+	'yanchor': 'bottom', 'xanchor': 'left',
+	'yref': 'paper', 'xref': 'paper',
+	'x': 0, 'y': 1
+}
+
+rc_yaxis = {
+	'title': 'Score (SDs)',
+	'range': [-4.2, 4.05],
+	'tickmode': 'array',
+	'tickvals': np.arange(-4, 4+1),
+	'ticktext': [f"{y}  " for y in np.arange(-4, 4+1)]
+}
+
+rc_layout = {
+	'width': 400, 'height': 350,
+	'margin': {'b': 30, 't': 40, 'l': 50, 'r': 20},
+	'title': rc_title,
+	'yaxis': rc_yaxis,
+}
+
+rc_legend = {
+	'orientation': 'h', 'yanchor': 'top', 'xanchor': 'left', 
+	'x': 0.01, 'y': 0.99,
+	'title': {'side': 'left', 'text': ""},
+}
+
+def raincloud_plot(
+        df, plt_vars, grp_var, grp_order=None, grp_colours=cb.Dark2,
+        do_box=True, do_pts=True, do_vio=True,
+        box_args={}, pts_args={}, mrk_args={}, vio_args={},
+        pts_jitter=None, vio_jitter=False, sym_offset=0, colour_offset=0,
+        layout_args=None, legend_args=None
+    ):
+    """ This is a custom implementation of a "raincloud" plot, that displays
+        adjacent jittered stripe plots, boxplots, and distribution curves
+        (i.e., half violins) for a given dataset. I rewrote this using plotly / 
+        python to make plots consistent for this study. 
+        
+        Sorry, horizontal orientation NYI. 
+        
+        This function Will adjust the width of the figure elements depending on 
+        which plot elements (points, box, violing) that you want to display. By
+        default, all three are shown.
+
+        https://neuroconscience.wordpress.com/2018/03/15/introducing-raincloud-plots/
+        https://github.com/RainCloudPlots/RainCloudPlots
+
+        Reference: Allen, M., Poggiali, D., Whitaker, K., Marshall, T. R. & 
+        Kievit, R. A. Raincloud plots: A multi-platform tool for robust data 
+        visualization. Wellcome Open Res. 4, 1–51 (2019).
+
+        Plotly details for the three subplots:
+            https://plotly.github.io/plotly.py-docs/generated/plotly.graph_objects.Box.html
+            https://plotly.github.io/plotly.py-docs/generated/plotly.graph_objects.Violin.html
+
+    Required Args:
+        df (Pandas DataFrame) - contains the input data.
+        plt_vars (list-like) - the name of the columns that contain data to be
+            plotted. Each element of the list will be plotted on a unique
+            x-coordinate.
+        grp_var (string) - the name of a column that contains a grouping
+            variable. Groups are colour-coded, and appear grouped together
+            over each x-coordinate.
+    
+    Optional Args:
+        grp_order (list-like) - the order of groups (left to right). If not 
+            Upplied (value of None) then the order is determined by order of
+            appearance in the data. (default: None)
+        do_box (boolean) - display the boxplots? (default: True)
+        do_pts (boolean) - display the jittered stripe plot of data points?
+            (default: True)
+        do_vio (boolean) -  display the distribution (half-violin) plot?
+            (default: True)
+        box_args (dict) - additional plotly boxplot options to be passed along
+            to the boxplot subtraces (e.g., to overwrite defaults options)
+        pts_args (dict) - additional options to be passed along to the stripe
+            (scatter/pt) traces (plotly Scatter graphobject)
+        mrk_args (dict) - additional options to be passed along to the marker
+            options of the stripe (scatter/pt) traces.
+        vio_args (dict) - additional options to be passed along to the 
+            violin traces.
+        pts_jitter (float)- the amount of jitter of the stripe plots, ranging from 0.0
+            to 1.0 (the width allocated for that subplot). 
+            (default: None - .75/n_grps)
+        vio_jitter (boolean) - if True, staggers the half violin plots like the
+            box and stripe plots. if False, they overlap.
+        sym_offset (integer) - offests the symbols ID (default: 0)
+        layout_args (dict) - extra layout options passed to plotly.
+        legend_args (dict) - extra legend options passed to plotly.
+
+    Returns:
+        fig - the figure.
+    """
+
+    n_x = len(plt_vars)
+    grps = df[grp_var].unique()
+    n_grps = len(grps)
+
+    if grp_order is None:
+        grp_order = list(grps)
+
+    # Widths of the gap, points, box, and violin sections
+    w_x = 1.
+    w_pt = 1. if do_pts else 0
+    w_bx = 2. if do_box else 0
+    w_vi = 1. if do_vio else 0
+
+    w_panel = w_x + w_pt + w_bx + w_vi
+
+    # Centres for each of the points, box, and violin sections
+    c_pt = [w_panel*x + (w_x + w_pt/2.) for x in range(n_x)]
+    c_bx = [w_panel*x + (w_x + w_pt + w_bx/2.) for x in range(n_x)]
+    c_vi = [w_panel*x + (w_x + w_pt + w_bx) for x in range(n_x)]
+
+    # Offsets for each group within each section
+    o_pt = w_pt*0.5*(np.arange(0, n_grps)/(n_grps-1) - 0.5) if n_grps > 0 else [0]
+    o_bx = w_bx*0.5*(np.arange(0, n_grps)/(n_grps-1) - 0.5) if n_grps > 0 else [0]
+    o_vi = w_vi*0.5*(np.arange(0, n_grps)/(n_grps-1)) if n_grps > 0 else [0]
+
+    jitter = .75/n_grps if pts_jitter is None else pts_jitter
+
+    fig = go.Figure()
+    w_plt = 0
+
+    grp_colours = grp_colours[colour_offset:]
+
+    # This loop simply adds invisible traces so we have nice legend items
+    for ig, g in enumerate(grp_order):
+        fig.add_trace(
+            go.Scatter(
+                x = [-np.inf], y = [-np.inf],
+                visible=True,
+                showlegend=True,
+                name = g,
+                mode = 'markers',
+                marker = dict(
+                    symbol = ig+sym_offset,
+                    color = grp_colours[ig],
+                    opacity = 0.5,
+                    line = dict(
+                        width = 2.,
+                        color = grp_colours[ig]
+                    ) 
+                )
+            )
+        )
+
+    for iv, v in enumerate(plt_vars):
+        for ig, g in enumerate(grp_order):
+            y_pt = df.loc[df[grp_var] == g, v]
+            nd = y_pt.shape[0]
+
+            # Create the stripe (scatter/pts) trace
+            if do_pts:
+                x_pt = np.repeat(c_pt[iv]+o_pt[ig], nd)
+                x_pt += (np.random.rand(nd) - 0.5) * jitter
+                mrk_opts = dict(
+                    symbol = ig+sym_offset,
+                    color = grp_colours[ig],
+                    opacity = 0.5,
+                    size = 5,
+                )
+                pts_opts = dict(
+                    x = x_pt,
+                    y = y_pt,
+                    name = g,
+                    mode = 'markers',
+                    marker = {**mrk_opts, **mrk_args},
+                    showlegend=False,
+                )
+                fig.add_trace(go.Scatter({**pts_opts, **pts_args}))
+
+            # Create the box trace
+            if do_box:
+                x_bx = np.repeat(c_bx[iv]+o_bx[ig], nd)
+                box_opts = dict(
+                    x = x_bx,
+                    y = y_pt,
+                    name = g,
+                    marker_color = grp_colours[ig],
+                    boxpoints = False,
+                    boxmean = False,
+                    notched = False,
+                    line = dict(
+                        width=1,
+                    ),
+                    showlegend=False,
+                )
+                fig.add_trace(go.Box({**box_opts, **box_args}))
+                w_plt = x_bx[0]
+
+            # Create the distribution (half-violin) trace
+            if do_vio:
+                x_vi = np.repeat(c_vi[iv], nd).astype('float32')
+                x_vi += o_vi[ig] if vio_jitter else 0
+                vio_opts = dict(
+                        x = x_vi,
+                        y = y_pt,
+                        name = g,
+                        scalegroup = iv,
+                        scalemode = 'count',
+                        side = 'positive',
+                        width = w_vi*2,
+                        points = False,
+                        spanmode = 'hard',
+                        line = dict(
+                            color = grp_colours[ig],
+                            width = 1
+                        ),
+                        showlegend=False,
+                )
+                fig.add_trace(go.Violin({**vio_opts, **vio_args}))
+                w_plt = x_vi[0]
+
+    template = plotly_template()
+    template['data']['scatter'] = []
+
+    if legend_args is None:
+        legend_args = rc_legend
+
+    if layout_args is None:
+        layout_args = rc_layout
+
+    legend_opts = dict(
+        title = dict(
+            text = grp_var,
+            side = 'top',
+        ),
+        itemsizing = 'constant',
+        bgcolor = 'rgba(0,0,0,0)',
+    )
+
+    layout_opts = dict(
+        template = template,
+        margin = {'b': 75, 't': 20, 'r': 30},
+        boxgap = 0.,
+        boxgroupgap = 0.2,
+        xaxis = dict(
+            tickmode = 'array',
+            tickvals = c_bx,
+            ticktext = plt_vars,
+            range = [0, w_plt+w_x*2]
+        ),
+        yaxis = dict(
+            title = 'Score (SDs)',
+            range = [-4.2, 4.05],
+            tickmode = 'array',
+            tickvals = np.arange(-4, 4+1),
+            ticktext = [f"{y}  " for y in np.arange(-4, 4+1)]
+        ),
+        legend = {**legend_opts, **legend_args}
+    )
+
+    fig.update_layout({**layout_opts, **layout_args})
+
+    return fig
 
 def means_plot(
         df, vars, vars_name,
