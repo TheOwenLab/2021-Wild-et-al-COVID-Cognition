@@ -529,6 +529,8 @@ q_counts = [q_counts[c].value_counts() for c in covid_vars]
 q_counts = pd.concat(q_counts, axis=1).T
 display(q_counts)
 
+print(f"\nNumber of participants with a pre-existing condition: {Zcc.pre_existing_condition.sum()}")
+display(Zcc[pre_exising_conditions].sum(axis=0))
 #%%
 # Generate tables of distributions and frequencies for variables that
 # describe the two groups.
@@ -771,7 +773,6 @@ save_and_display_table(r0_table, 'Table_S6')
 #%% [markdown]
 # ### Plots of Factors Scores vs. Covariates
 #%% 
-
 from plotly.colors import colorbrewer as cb
 
 Zcc_ = Zcc.copy()
@@ -1281,10 +1282,14 @@ rH_b_fig.savefig('./outputs/images/Figure_6b.svg')
 # of the five composite cognitive scores.
 vars_ = fnames + mhvars + Xcovar + ['pre_existing_condition']
 
+Zcc_ = Zcc.copy()
+Zcc_[Xcovar] = Xtfm_.transform(Zcc_[Xcovar])
+Zcc_['pre_existing_condition'] = Zcc_['pre_existing_condition'].astype('int')
+
 # Let's run a linear regression that predicts each composite cognitive score
 # from each variable in the list. Then, adjust all the coefficient p-values
 # (5 x # of vars) using false discovery rate.
-rEXPL_regressions = [ws.regression_analyses(f"%s ~ {v}", comp_scores, Zcc) for v in vars_]
+rEXPL_regressions = [ws.regression_analyses(f"%s ~ {v}", comp_scores, Zcc_) for v in vars_]
 rEXPL_regressions = [r[0].drop('Intercept', level='contrast') for r in rEXPL_regressions]
 rEXPL_regressions = pd.concat(rEXPL_regressions, axis=0)
 rEXPL_regressions = ws.adjust_pvals(
@@ -1293,7 +1298,7 @@ rEXPL_regressions = ws.adjust_pvals(
 # Here we'll do the Bayesian model comparisons, comparing a model with the 
 # single variable (~ v) to an intercept-only model (~ 1).
 models = [{'name': v, 'h0': f"%s ~ 1", 'h1': f"%s ~ {v}"} for v in vars_]
-rEXPL_comparisons = ws.compare_models(models, Zcc, comp_scores, smf.ols)
+rEXPL_comparisons = ws.compare_models(models, Zcc_, comp_scores, smf.ols)
 
 # Make the figures...
 rEXPL_ts = wp.create_stats_figure(
