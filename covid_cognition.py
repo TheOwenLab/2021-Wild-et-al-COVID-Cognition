@@ -825,6 +825,9 @@ ses_plot = wp.raincloud_plot(
 )
 save_and_display_figure(ses_plot, 'Figure_2d')
 
+(Zcc_[fnames+['age_bin', 'post_secondary', 'sex', 'SES']]
+	.to_csv('./outputs/tables/figure_data_F2.csv', index=False)
+)
 #%% [markdown]
 # ## COVID+ vs. Control - Comparisons of Cognitive Performance
 
@@ -946,6 +949,9 @@ f1_bin_plot = wp.raincloud_plot(
 )
 save_and_display_figure(f1_bin_plot, 'Figure_n3b')
 
+(Zcc[['F1_bin', 'F2_bin']+comp_scores]
+	.to_csv('./outputs/tables/figure_data_F3.csv', index=False)
+)
 #%% [markdown]
 # ## COVID+ Binned Groups vs. Controls
 
@@ -1166,6 +1172,7 @@ f5b, m = wp.means_plot(
 	bar_args=bar_args, layout_args=layout_args,
 )
 save_and_display_figure(f5b, 'Figure_5B')
+
 #%% [markdown]
 # Now do the raincloud plots for these figures...
 #%%
@@ -1191,6 +1198,9 @@ hosp_cog_plots = wp.raincloud_plot(
 )
 save_and_display_figure(hosp_cog_plots, 'Figure_n5b')
 
+(Zcc[fnames+comp_scores+['hospital_stay']]
+	.to_csv('.outputs/tables/figure_data_F5.csv', index=False)
+)
 #%% [markdown]
 # ### Directly Compare Non-/Hospitalised Groups
 # Description here...
