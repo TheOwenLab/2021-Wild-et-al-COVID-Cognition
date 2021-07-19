@@ -1208,7 +1208,7 @@ hosp_cog_plots = wp.raincloud_plot(
 save_and_display_figure(hosp_cog_plots, 'Figure_n5b')
 
 (Zcc[fnames+comp_scores+['hospital_stay']]
-	.to_csv('.outputs/tables/figure_data_F5.csv', index=False)
+	.to_csv('./outputs/tables/figure_data_F5.csv', index=False)
 )
 #%% [markdown]
 # ### Directly Compare Non-/Hospitalised Groups
@@ -1338,24 +1338,6 @@ rEXPL_bf_table = (rEXPL_comparisons['BF10']
 
 rEXPL_bf_table.to_csv('./outputs/tables/Table_S12.csv')
 
-# %% [markdown]
-# QQ-plots of scores, by hospitalisation
-
-#%%
-qq = np.empty([len(comp_scores), 2], dtype='object')
-qt = np.empty([len(comp_scores), 2], dtype='object')
-for ir, score in enumerate(comp_scores):
-	for ic, grp in enumerate(["Yes", "No"]):
-		xx = Zcc_.loc[Zcc_.hospital_stay==grp, score]
-		qq[ir, ic] = probplot(xx, dist="norm")
-		qt[ir, ic] = f"{score} (Hospital = {grp})"
-
-qq_hosp = wp.qq_plots(qq, qt, layout_args={
-	'height': 800, 'width': 500
-})
-
-save_and_display_figure(qq_hosp, 'Figure_QQhosp')
-
 #%% [markdown]
 # ### Sankey Diagram
 # - This needs to be seriously cleaned up
@@ -1470,7 +1452,8 @@ sdd = SankeyDefinition(nodes, bundles, order, flow_partition=target)
 	.to_widget(width=1000, align_link_types=True)
 	.auto_save_svg('./outputs/images/Figure_S1.svg'))
 
-#%%
 SVG('./outputs/images/Figure_S1.svg')
-#%%
+#%% [markdown]
+# Last updated 2021-07-19 by cwild
+
 
