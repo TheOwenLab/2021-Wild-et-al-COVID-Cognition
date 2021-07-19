@@ -529,6 +529,10 @@ q_counts = [q_counts[c].value_counts() for c in covid_vars]
 q_counts = pd.concat(q_counts, axis=1).T
 display(q_counts)
 
+(Zcc[covid_vars+pre_exising_conditions]
+	.to_csv('./outputs/tables/table_data_T1.csv')
+)
+
 print(f"\nNumber of participants with a pre-existing condition: {Zcc.pre_existing_condition.sum()}")
 display(Zcc[pre_exising_conditions].sum(axis=0))
 #%%
@@ -547,6 +551,11 @@ covar_data = pd.concat(
 	[Zctrl[Xcovar].join(Qctrl[['country']+lang_vars]), 
 	 Zcc[Xcovar+lang_vars+['country']]], axis=0, 
 	names=['dataset'], keys=['Control', 'COVID+'])
+
+(covar_data
+	.reset_index('dataset')
+	.to_csv('./outputs/tables/table_data_T2.csv', index=False)
+)
 
 grp_counts = (covar_data
 	.groupby('dataset')
