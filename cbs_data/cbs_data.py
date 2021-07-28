@@ -8,6 +8,7 @@
 import pandas as pd
 from os import path
 from enum import Enum
+from glob import glob
 
 class MetaCBSData(type):
     """ A meta class for data sources, basically all we need for this stubbed
@@ -22,6 +23,15 @@ class MetaCBSData(type):
         """
         return path.join('.', 'cbs_data', 'data')
 
+    def most_recent_file(cls, name, ext='csv'):
+        """ Find the most recent file of a fiven name & type
+        """
+        pattern = f"{name}*.{ext}"
+        files = sorted(glob(path.join(cls.data_directory, pattern)))
+        if len(files) > 0:
+            return files[-1]
+        else:
+            return None
 
 class Questionnaire(object):
     """ This class is intantiated to create a Questionnaire object, that 
@@ -32,7 +42,7 @@ class Questionnaire(object):
 
     @property
     def data_file(self):
-        return path.join(self._study.data_directory, self._data_filename)
+        return self._data_filename
 
     @property
     def map_(self):

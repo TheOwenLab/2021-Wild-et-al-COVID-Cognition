@@ -44,10 +44,12 @@ class ControlStudyQuestionnaire(Questionnaire):
 class MetaControlStudy(MetaCBSData):
     def __init__(self, name, base, ns):
         self._questionnaire = ControlStudyQuestionnaire(self,
-            'Control_Study_Wild_etal_2021_questionnaire_data_2021-04-15.csv')
+            self.most_recent_file('Control_Study_Wild_etal_2021_questionnaire_data')
+        )
 
         self._score_data = ScoreData(self,
-            'Control_Study_Wild_etal_2021_CBS_task_data_2021-04-15.csv')
+            self.most_recent_file('Control_Study_Wild_etal_2021_CBS_task_data')
+        )
 
     @property
     def questionnaire(self):

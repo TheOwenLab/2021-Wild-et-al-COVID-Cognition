@@ -224,10 +224,12 @@ class CovidCogQuestionnaire(Questionnaire):
 class MetaCovidCognition(MetaCBSData):
     def __init__(self, name, base, ns):
         self._questionnaire = CovidCogQuestionnaire(self,
-            'COVID_Cognition_Wild_etal_2021_questionnaire_data_2021-04-15.csv')
+            self.most_recent_file('COVID_Cognition_Wild_etal_2021_questionnaire_data')
+        )
 
         self._score_data = ScoreData(self,
-            'COVID_Cognition_Wild_etal_2021_CBS_task_data_2021-04-15.csv')
+            self.most_recent_file('COVID_Cognition_Wild_etal_2021_CBS_task_data')
+        )
 
     @property
     def questionnaire(self):
