@@ -1242,7 +1242,12 @@ save_and_display_table(r8_ttests[ttest_columns], 'Table_S10')
 
 #%% [markdown]
 # ### Include Hospitalisation Status in Regression Models
-# Description
+# It doesn't quite look like there are differences in cognitive scores between
+# Non/Hopistalised groups (though, probably a power issue) - so what happens if
+# we include hospitalisation as a regressor in our models? Given that our
+# analysis does model comparison, this tells us if F1 explains any variation in 
+# cognitive scores *after* controlling for the effect(s) of hospitalisation and
+# F2.
 #
 # %% 
 # Transform it into a binary variable, where 1 = "Yes" (hospitalised)
@@ -1457,3 +1462,5 @@ SVG('./outputs/images/Figure_S1.svg')
 # Last updated 2021-07-19 by cwild
 
 
+
+# %%
