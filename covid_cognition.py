@@ -623,14 +623,14 @@ var_rename = {
 	'baseline_functioning_Yes': 'subj_baseline',
 	'baseline_functioning': 'subj_baseline',
 	'subjective_memory': 'subj_memory',
-	'days_since_test': 'days_since_+test'
+	'days_since_test': 'days_since_test'
 }
 
 var_order = sf36vars + mhvars + [
 	'subj_memory',
 	'subj_baseline',
 	'WHO_COVID_severity',
-	'days_since_+test']
+	'days_since_test']
 
 fdata.WHO_COVID_severity = fdata.WHO_COVID_severity >= 2
 fdata_tfm = ColumnTransformer([
@@ -960,6 +960,32 @@ save_and_display_figure(f1_bin_plot, 'Figure_n3b')
 
 (Zcc[['F1_bin', 'F2_bin']+comp_scores]
 	.to_csv('./outputs/tables/figure_data_F3.csv', index=False)
+)
+#%% [markdown]
+# ## Pairwise Relationships
+# It might be informative to correlate each individual health-related variable, instead
+# of factor scores, with the cosngitive scores. THen we can see if certain indicators
+# are good predictors of cognitive performance,
+
+#%%
+pairwise_data = Zcc[comp_scores+fnames].join(fdata0, how='left')
+health_vars = var_order
+results = (pd
+	.concat([ws.regression_analyses(f"%s ~ {var}", comp_scores, pairwise_data)[0] for var in health_vars+fnames])
+	.drop('Intercept', level='contrast')
+	.pipe(ws.adjust_pvals, adj_across='all', adj_type='fdr_bh')
+)
+
+ff= wp.create_stats_figure(
+	results, 'tstat', 'p_adj', diverging=True, vertline=2,
+	correction='fdr_bh', stat_range=[-6.3, 6.3])
+
+
+#%%
+results = (pd
+	.concat([ws.regression_analyses(f"%s ~ {var}", comp_scores, pairwise_data)[0] for var in fnames])
+	.drop('Intercept', level='contrast')
+	.pipe(ws.adjust_pvals, adj_across='all', adj_type='fdr_bh')
 )
 #%% [markdown]
 # ## COVID+ Binned Groups vs. Controls
