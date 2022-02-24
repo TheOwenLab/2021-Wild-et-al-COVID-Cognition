@@ -229,7 +229,7 @@ test_scores = df_
 Yvar = test_scores+comp_scores
 
 #%% [markdown]
-# ## Relationship between covariate (nuisnace variables) and cognitive scores.
+# ## Relationship between covariate (nuisance variables) and cognitive scores.
 # Here, we'll do an an exploratory analysis to see which of our common 
 # covariates have a relationship with cognitive scores -- in the control group.
 # Simply, we will run a linear regression model for each test and composite
@@ -782,6 +782,7 @@ save_and_display_table(r0_table, 'Table_S6')
 #%% [markdown]
 # ### Plots of Factors Scores vs. Covariates
 #%% 
+
 from plotly.colors import colorbrewer as cb
 
 Zcc_ = Zcc.copy()
@@ -794,30 +795,55 @@ _, age_bins = pd.qcut(Zcc_['age'], 3, labels=False, retbins=True, precision=0)
 age_bins = [f"{int(x)}-{int(age_bins[i+1])}" for i, x in enumerate(age_bins[:-1])]
 Zcc_['age_bin'] = pd.qcut(Zcc_['age'], 3, labels=age_bins)
 
+# CELL Reports Medicine:
+# For 2-column formats (such as research articles and reviews), the sizes are 
+# 85 mm (1 column), 114 mm (1.5 columns), and 174 mm (full width of the page).
+# For color figures, the resolution should be 300 dpi at the desired print size
+# For black and white figures, the resolution should be 500 dpi at the desired print size
+# For line-art figures, the resolution should be 1,000 dpi at the desired print size 
+import importlib
+importlib.reload(wp)
+
+w1_mm = 58 #mm
+w2_mm = 39 #mm
+
 wp.rc_title.update(text = 'A) Age (years)')
+wp.rc_layout.update(
+	boxgroupgap = 0.2, 
+	width = wp.mm_to_pts(w1_mm, dpi=1000),
+)
+
+# F1/F2 as a function of Age
 age_plot = wp.raincloud_plot(
 	Zcc_, ['F1', 'F2'], 'age_bin', grp_order=age_bins,
-	vio_args = {'spanmode': 'soft'},
+	do_vio = False, do_pts = False, sym_constant=True, sym_offset=1,
+	box_args = {'boxpoints': 'outliers', 'notched': True}
 )
 save_and_display_figure(age_plot, 'Figure_2a')
 
-wp.rc_layout.update(boxgroupgap = 0.4, width = 280)
+wp.rc_layout.update(
+	boxgroupgap = 0.4, 
+	width = wp.mm_to_pts(w2_mm, dpi=1000),
+)
 wp.rc_yaxis.update(showticklabels = False, title = None)
-wp.rc_layout['margin'].update(l=30)
+wp.rc_layout['margin'].update(l=10)
 wp.rc_title.update(text = 'B) Post Secondary')
 
+# F1/F2 as a function of post-secondary education
 edu_plot = wp.raincloud_plot(
 	Zcc_, ['F1', 'F2'], 'post_secondary',
 	grp_colours = [cb.Paired[c] for c in [1,3]],
-	vio_args = {'spanmode': 'soft'}, sym_offset = 2
+	do_vio = False, do_pts = False, sym_constant=True, sym_offset=1,
+	box_args = {'boxpoints': 'outliers', 'notched': True}
 )
 save_and_display_figure(edu_plot, 'Figure_2b')
 
+# F1/F2 as a function of sex
 wp.rc_title.update(text = 'C) Sex')
 sex_plot = wp.raincloud_plot(
 	Zcc_, ['F1', 'F2'], 'sex', colour_offset = 2,
-	vio_args = {'spanmode': 'soft'}, sym_offset = 5, 
-	mrk_args = {'size': 6}
+	do_vio = False, do_pts = False, sym_constant=True, sym_offset=1,
+	box_args = {'boxpoints': 'outliers', 'notched': True}
 )
 save_and_display_figure(sex_plot, 'Figure_2c')
 
@@ -826,17 +852,15 @@ Zcc_['SES'] = Zcc_['SES'].cat.rename_categories(
 	{'At or above poverty level': 'At / Above', 'Below poverty level': 'Below'}
 )
 
+# F1/F2 as a function of SES
 wp.rc_title.update(text = 'D) SES (poverty level)')
 ses_plot = wp.raincloud_plot(
 	Zcc_, ['F1', 'F2'], 'SES', colour_offset = 4,
-	vio_args = {'spanmode': 'soft'}, sym_offset = 7,
-	mrk_args = {'size': 6}
+	do_vio = False, do_pts = False, sym_constant=True, sym_offset=1,
+	box_args = {'boxpoints': 'outliers', 'notched': True}
 )
 save_and_display_figure(ses_plot, 'Figure_2d')
 
-(Zcc_[fnames+['age_bin', 'post_secondary', 'sex', 'SES']]
-	.to_csv('./outputs/tables/figure_data_F2.csv', index=False)
-)
 #%% [markdown]
 # ## COVID+ vs. Control - Comparisons of Cognitive Performance
 
@@ -911,7 +935,7 @@ f3a, _ = wp.means_plot(
 	group_color_sequence=grayscale_map,
 	bar_args=bar_args, layout_args=layout_args 
 )
-save_and_display_figure(f3a, 'Figure_o3A')
+save_and_display_figure(f3a, 'OLD_Figure_3A')
 
 layout_args['legend']['title'] = 'F2 (mental health)'
 f3b, _ = wp.means_plot(
@@ -919,48 +943,44 @@ f3b, _ = wp.means_plot(
 	group_color_sequence=grayscale_map,
 	bar_args=bar_args, layout_args=layout_args 
 )
-save_and_display_figure(f3b, 'Figure_o3B')
+save_and_display_figure(f3b, 'OLD_Figure_3B')
 
 #%%
-# Raincloud plots for cognitive scores by health factor
+# Box plots for cognitive scores by health factor
 
+# Resets the plot layout options to my defaults...
+importlib.reload(wp)
+
+fwidth_mm = 114 # mm
 viridis_map = [plotly.colors.sequential.Viridis_r[i] for i in [2,5,8]]
 
-wp.rc_title.update(text = '')
-
 wp.rc_layout.update(
-	width=800,
-	margin={'b': 30, 't': 40, 'l': 60, 'r': 20})
-
-wp.rc_legend.update(
-	title={
-		'text': 'Overall Physical Health (F1)',
-	},
-	xanchor='right', yanchor='bottom', x=1, y=1,
+	width = wp.mm_to_pts(fwidth_mm, dpi=1000),
 )
 
+wp.rc_legend.update(
+	xanchor='right', yanchor='bottom', x=1, y=0.99,
+)
+
+wp.rc_title.update(text = 'Overall Physical Health (F1)')
 f1_bin_plot = wp.raincloud_plot(
 	Zcc, comp_scores, 'F1_bin', grp_order=labels,
 	grp_colours = viridis_map,
-	vio_args = {'spanmode': 'soft'},
+	do_vio = False, do_pts = False, sym_constant = True, sym_offset = 1,
+	box_args = {'boxpoints': 'outliers', 'notched': True}
 )
-save_and_display_figure(f1_bin_plot, 'Figure_n3a')
+save_and_display_figure(f1_bin_plot, 'Figure_3a')
 
-wp.rc_legend.update(
-	title={
-		'text': 'Mental Health & Wellness (F2)',
-	},
-)
-f1_bin_plot = wp.raincloud_plot(
+
+wp.rc_title.update(text = 'Mental Health & Wellness (F2)')
+f2_bin_plot = wp.raincloud_plot(
 	Zcc, comp_scores, 'F2_bin', grp_order=labels,
 	grp_colours = viridis_map,
-	vio_args = {'spanmode': 'soft'},
+	do_vio = False, do_pts = False, sym_constant = True, sym_offset = 1,
+	box_args = {'boxpoints': 'outliers', 'notched': True}
 )
-save_and_display_figure(f1_bin_plot, 'Figure_n3b')
+save_and_display_figure(f2_bin_plot, 'Figure_3b')
 
-(Zcc[['F1_bin', 'F2_bin']+comp_scores]
-	.to_csv('./outputs/tables/figure_data_F3.csv', index=False)
-)
 #%% [markdown]
 # ## Pairwise Relationships
 # It might be informative to correlate each individual health-related variable, instead
@@ -977,16 +997,9 @@ results = (pd
 )
 
 ff= wp.create_stats_figure(
-	results, 'tstat', 'p_adj', diverging=True, vertline=2,
-	correction='fdr_bh', stat_range=[-6.3, 6.3])
+	results, 'tstat', 'p_adj', diverging=True, vertline=None,
+	correction='FDR', stat_range=[-6.3, 6.3])
 
-
-#%%
-results = (pd
-	.concat([ws.regression_analyses(f"%s ~ {var}", comp_scores, pairwise_data)[0] for var in fnames])
-	.drop('Intercept', level='contrast')
-	.pipe(ws.adjust_pvals, adj_across='all', adj_type='fdr_bh')
-)
 #%% [markdown]
 # ## COVID+ Binned Groups vs. Controls
 
@@ -1072,8 +1085,8 @@ f1_ts = wp.create_stats_figure(
 # Matrix of BFs
 f1_bf = wp.create_bayes_factors_figure(res1_fig, suppress_h0=True, vertline=2)
 
-f1_ts.savefig('./outputs/images/Figure_4A.svg')
-f1_bf.savefig('./outputs/images/Figure_4B.svg')
+f1_ts.savefig('./outputs/images/Figure_S5A.svg')
+f1_bf.savefig('./outputs/images/Figure_S5B.svg')
 
 #%% [markdown]
 # ### QQ-Plots
@@ -1089,12 +1102,12 @@ qq_f = wp.qq_plots(qq_res, qq_nms,
 	layout_args = {'width': 400, 'height': 400}
 )
 
-save_and_display_figure(qq_f, 'Figure_S3')
+save_and_display_figure(qq_f, 'Figure_S4')
 
 #%% [markdown]
 # ## Supplementary Analysis
 #  
-# Let's include a bnuch of covariates in the regression models to see if they 
+# Let's include a bunch of covariates in the regression models to see if they 
 # explain the relationship(s) between F1 and cognitive scores. We'll include all
 # the coviariates of no interest (Xcovar) that are common to both groups 
 # (age, sex, level of education, SES, exercise, smoking, alcohol, other 
@@ -1165,7 +1178,7 @@ f, m = wp.means_plot(
 		'width': 650, 'height': 350},
 	group_tests=True)
 
-save_and_display_figure(f, 'Figure_X1')
+save_and_display_figure(f, 'OLD_Figure_5C')
 
 bar_args = {
 	'range_y': [-0.8, 0.4],
@@ -1196,7 +1209,7 @@ f5a, m = wp.means_plot(
 	bar_args=bar_args, layout_args=layout_args,
 )
 
-save_and_display_figure(f5a, 'Figure_5A')
+save_and_display_figure(f5a, 'OLD_Figure_5A')
 
 layout_args['showlegend'] = False
 layout_args['width'] = 200
@@ -1206,36 +1219,51 @@ f5b, m = wp.means_plot(
 	group_color_sequence=grayscale_map,
 	bar_args=bar_args, layout_args=layout_args,
 )
-save_and_display_figure(f5b, 'Figure_5B')
+save_and_display_figure(f5b, 'OLD_Figure_5B')
 
 #%% [markdown]
-# Now do the raincloud plots for these figures...
+# Now do the Box plots for these figures...
 #%%
-wp.rc_title.update(text="")
-wp.rc_layout.update(
-	width=290, boxgroupgap = 0.4,
-	margin={'b': 30, 't': 20, 'l': 50, 'r': 20})
 
+# Resets the plot layout options to my defaults
+importlib.reload(wp)
+w1 = 50
+w2 = 174-w1
+
+wp.rc_layout.update(
+	width=wp.mm_to_pts(w1, dpi=1000), 
+	boxgroupgap = .2,
+	showlegend = False,
+)
+
+wp.rc_title.update(text = 'A) Health Factors')
 hosp_hf_plots = wp.raincloud_plot(
 	Zcc, fnames, 'hospital_stay', grp_order=['Yes', 'No'],
 	grp_colours = plotly.colors.qualitative.Set1,
-	vio_args = {'spanmode': 'soft'},
-	mrk_args = {'size': 4, 'opacity': 0.5}
+	do_vio = False, do_pts = False, sym_constant=True, sym_offset=1,
+	box_args = {'boxpoints': 'outliers', 'notched': True},
 )
-save_and_display_figure(hosp_hf_plots, 'Figure_n5a')
+save_and_display_figure(hosp_hf_plots, 'Figure_4a')
 
-wp.rc_layout.update(width=600)
+wp.rc_layout.update(
+	width = wp.mm_to_pts(w2, dpi=1000),
+	showlegend = True,
+)
+
+wp.rc_legend.update(
+	title = 'Hospitalised?',
+	xanchor = 'right', yanchor = 'bottom', x = 1, y = 0.99,
+)
+
+wp.rc_title.update(text = 'B) Cognitive Scores')
 hosp_cog_plots = wp.raincloud_plot(
 	Zcc, comp_scores, 'hospital_stay', grp_order=['Yes', 'No'],
 	grp_colours = plotly.colors.qualitative.Set1,
-	vio_args = {'spanmode': 'soft'},
-	mrk_args = {'size': 4, 'opacity': 0.5}
+	do_vio = False, do_pts = False, sym_constant=True, sym_offset=1,
+	box_args = {'boxpoints': 'outliers', 'notched': True},
 )
-save_and_display_figure(hosp_cog_plots, 'Figure_n5b')
+save_and_display_figure(hosp_cog_plots, 'Figure_4b')
 
-(Zcc[fnames+comp_scores+['hospital_stay']]
-	.to_csv('./outputs/tables/figure_data_F5.csv', index=False)
-)
 #%% [markdown]
 # ### Directly Compare Non-/Hospitalised Groups
 # Description here...
@@ -1278,12 +1306,13 @@ save_and_display_table(r8_ttests[ttest_columns], 'Table_S10')
 # %% 
 # Transform it into a binary variable, where 1 = "Yes" (hospitalised)
 if Zcc.hospital_stay.dtype == 'category':
-	Zcc['hospital_stay'] = (
+	Zcc.loc[:, 'hospital_stay'] = (
 		OneHotEncoder(drop=['No'])
 		.fit_transform(Zcc[['hospital_stay']])
 		.todense()
 	)
 
+#%%
 full_model_w_hosp = ws.build_model_expression(fnames, 'hospital_stay')
 print(f"Model Expression: {full_model_w_hosp}")
 
@@ -1320,7 +1349,7 @@ rH_b_fig = wp.create_bayes_factors_figure(
 rH_t_fig.savefig('./outputs/images/Figure_6a.svg')
 rH_b_fig.savefig('./outputs/images/Figure_6b.svg')
 
-#%% [markdown]
+ #%% [markdown]
 # ## Other Exploratory Analyses
 # Next, we'll just do simple pairwise correlations between a bunch of variables
 # and cognitive scores to see if there any other associations that might be 
@@ -1483,10 +1512,13 @@ sdd = SankeyDefinition(nodes, bundles, order, flow_partition=target)
 	.to_widget(width=1000, align_link_types=True)
 	.auto_save_svg('./outputs/images/Figure_S1.svg'))
 
+#%%
 SVG('./outputs/images/Figure_S1.svg')
 #%% [markdown]
 # Last updated 2021-07-19 by cwild
 
 
+
+# %%
 
 # %%
