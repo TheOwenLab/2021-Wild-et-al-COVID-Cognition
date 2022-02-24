@@ -982,25 +982,6 @@ f2_bin_plot = wp.raincloud_plot(
 save_and_display_figure(f2_bin_plot, 'Figure_3b')
 
 #%% [markdown]
-# ## Pairwise Relationships
-# It might be informative to correlate each individual health-related variable, instead
-# of factor scores, with the cosngitive scores. THen we can see if certain indicators
-# are good predictors of cognitive performance,
-
-#%%
-pairwise_data = Zcc[comp_scores+fnames].join(fdata0, how='left')
-health_vars = var_order
-results = (pd
-	.concat([ws.regression_analyses(f"%s ~ {var}", comp_scores, pairwise_data)[0] for var in health_vars+fnames])
-	.drop('Intercept', level='contrast')
-	.pipe(ws.adjust_pvals, adj_across='all', adj_type='fdr_bh')
-)
-
-ff= wp.create_stats_figure(
-	results, 'tstat', 'p_adj', diverging=True, vertline=None,
-	correction='FDR', stat_range=[-6.3, 6.3])
-
-#%% [markdown]
 # ## COVID+ Binned Groups vs. Controls
 
 #%% 
@@ -1351,24 +1332,50 @@ rH_b_fig.savefig('./outputs/images/Figure_6b.svg')
 
  #%% [markdown]
 # ## Other Exploratory Analyses
-# Next, we'll just do simple pairwise correlations between a bunch of variables
-# and cognitive scores to see if there any other associations that might be 
-# of interest. Given the large number of comparisons, we'll just focus on the 
-# Bayes Factor (10 - in support of the alternative hypothesis).
+
+
+#%% [markdown]
+# ## Supplementary Analyses
+
+# It might be informative to correlate each individual health-related variable,
+# instead of factor scores, with the cosngitive scores. THen we can see if 
+# certain indicators are good predictors of cognitive performance,
 
 #%%
-# This is the list of all the variables we are going to use as predictors
-# of the five composite cognitive scores.
-vars_ = fnames + mhvars + Xcovar + ['pre_existing_condition']
+pairwise_data = Zcc[comp_scores+fnames].join(fdata0, how='left')
+health_vars = var_order
+results = (pd
+	.concat([ws.regression_analyses(f"%s ~ {var}", comp_scores, pairwise_data)[0] for var in health_vars])
+	.drop('Intercept', level='contrast')
+	.pipe(ws.adjust_pvals, adj_across='all', adj_type='fdr_bh')
+)
+
+ff= wp.create_stats_figure(
+	results, 'tstat', 'p_adj', diverging=True, vertline=None,
+	correction='FDR', stat_range=[-6.3, 6.3])
+
+#%% [markdown]
+# ### Nuisance Variables
+# Do any of the socio-demographic or other variables that we adjusted our
+# dependent variables (cognitive scores) for show any residual association
+# with the DVss
+
+IVs =  Xcovar + ['pre_existing_condition']
 
 Zcc_ = Zcc.copy()
 Zcc_[Xcovar] = Xtfm_.transform(Zcc_[Xcovar])
 Zcc_['pre_existing_condition'] = Zcc_['pre_existing_condition'].astype('int')
 
+results = (pd
+	.concat([ws.regression_analyses(f"%s ~ {var}", comp_scores, pairwise_data)[0] for var in IVs])
+	.drop('Intercept', level='contrast')
+	.pipe(ws.adjust_pvals, adj_across='all', adj_type='fdr_bh')
+)
+
 # Let's run a linear regression that predicts each composite cognitive score
 # from each variable in the list. Then, adjust all the coefficient p-values
 # (5 x # of vars) using false discovery rate.
-rEXPL_regressions = [ws.regression_analyses(f"%s ~ {v}", comp_scores, Zcc_) for v in vars_]
+rEXPL_regressions = [ws.regression_analyses(f"%s ~ {v}", comp_scores, Zcc_) for v in IVs]
 rEXPL_regressions = [r[0].drop('Intercept', level='contrast') for r in rEXPL_regressions]
 rEXPL_regressions = pd.concat(rEXPL_regressions, axis=0)
 rEXPL_regressions = ws.adjust_pvals(
@@ -1376,7 +1383,7 @@ rEXPL_regressions = ws.adjust_pvals(
 
 # Here we'll do the Bayesian model comparisons, comparing a model with the 
 # single variable (~ v) to an intercept-only model (~ 1).
-models = [{'name': v, 'h0': f"%s ~ 1", 'h1': f"%s ~ {v}"} for v in vars_]
+models = [{'name': v, 'h0': f"%s ~ 1", 'h1': f"%s ~ {v}"} for v in IVs]
 rEXPL_comparisons = ws.compare_models(models, Zcc_, comp_scores, smf.ols)
 
 # Make the figures...
