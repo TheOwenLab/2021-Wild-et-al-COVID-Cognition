@@ -623,18 +623,19 @@ var_rename = {
 	'baseline_functioning_Yes': 'subj_baseline',
 	'baseline_functioning': 'subj_baseline',
 	'subjective_memory': 'subj_memory',
-	'days_since_test': 'days_since_test'
+	# 'days_since_test': 'days_since_test'
 }
 
 var_order = sf36vars + mhvars + [
 	'subj_memory',
 	'subj_baseline',
 	'WHO_COVID_severity',
-	'days_since_test']
+	# 'days_since_test'
+]
 
 fdata.WHO_COVID_severity = fdata.WHO_COVID_severity >= 2
 fdata_tfm = ColumnTransformer([
-	('z', StandardScaler(), sf36vars+['days_since_test']),
+	('z', StandardScaler(), sf36vars), #+['days_since_test']),
 	('r', MinMaxScaler(feature_range=(-1,1)), mhvars+['subjective_memory', 'WHO_COVID_severity']),
 	('c', OneHotEncoder(drop='first'), ['baseline_functioning']),
 ]).fit(fdata)
@@ -817,7 +818,7 @@ wp.rc_layout.update(
 age_plot = wp.raincloud_plot(
 	Zcc_, ['F1', 'F2'], 'age_bin', grp_order=age_bins,
 	do_vio = False, do_pts = False, sym_constant=True, sym_offset=1,
-	box_args = {'boxpoints': 'outliers', 'notched': True}
+	box_args = {'boxpoints': 'outliers'}
 )
 save_and_display_figure(age_plot, 'Figure_2a')
 
@@ -834,7 +835,7 @@ edu_plot = wp.raincloud_plot(
 	Zcc_, ['F1', 'F2'], 'post_secondary',
 	grp_colours = [cb.Paired[c] for c in [1,3]],
 	do_vio = False, do_pts = False, sym_constant=True, sym_offset=1,
-	box_args = {'boxpoints': 'outliers', 'notched': True}
+	box_args = {'boxpoints': 'outliers'}
 )
 save_and_display_figure(edu_plot, 'Figure_2b')
 
@@ -843,7 +844,7 @@ wp.rc_title.update(text = 'C) Sex')
 sex_plot = wp.raincloud_plot(
 	Zcc_, ['F1', 'F2'], 'sex', colour_offset = 2,
 	do_vio = False, do_pts = False, sym_constant=True, sym_offset=1,
-	box_args = {'boxpoints': 'outliers', 'notched': True}
+	box_args = {'boxpoints': 'outliers'}
 )
 save_and_display_figure(sex_plot, 'Figure_2c')
 
@@ -857,7 +858,7 @@ wp.rc_title.update(text = 'D) SES (poverty level)')
 ses_plot = wp.raincloud_plot(
 	Zcc_, ['F1', 'F2'], 'SES', colour_offset = 4,
 	do_vio = False, do_pts = False, sym_constant=True, sym_offset=1,
-	box_args = {'boxpoints': 'outliers', 'notched': True}
+	box_args = {'boxpoints': 'outliers'}
 )
 save_and_display_figure(ses_plot, 'Figure_2d')
 
@@ -967,7 +968,7 @@ f1_bin_plot = wp.raincloud_plot(
 	Zcc, comp_scores, 'F1_bin', grp_order=labels,
 	grp_colours = viridis_map,
 	do_vio = False, do_pts = False, sym_constant = True, sym_offset = 1,
-	box_args = {'boxpoints': 'outliers', 'notched': True}
+	box_args = {'boxpoints': 'outliers'}
 )
 save_and_display_figure(f1_bin_plot, 'Figure_3a')
 
@@ -977,7 +978,7 @@ f2_bin_plot = wp.raincloud_plot(
 	Zcc, comp_scores, 'F2_bin', grp_order=labels,
 	grp_colours = viridis_map,
 	do_vio = False, do_pts = False, sym_constant = True, sym_offset = 1,
-	box_args = {'boxpoints': 'outliers', 'notched': True}
+	box_args = {'boxpoints': 'outliers'}
 )
 save_and_display_figure(f2_bin_plot, 'Figure_3b')
 
@@ -1222,7 +1223,7 @@ hosp_hf_plots = wp.raincloud_plot(
 	Zcc, fnames, 'hospital_stay', grp_order=['Yes', 'No'],
 	grp_colours = plotly.colors.qualitative.Set1,
 	do_vio = False, do_pts = False, sym_constant=True, sym_offset=1,
-	box_args = {'boxpoints': 'outliers', 'notched': True},
+	box_args = {'boxpoints': 'outliers'},
 )
 save_and_display_figure(hosp_hf_plots, 'Figure_4a')
 
@@ -1241,7 +1242,7 @@ hosp_cog_plots = wp.raincloud_plot(
 	Zcc, comp_scores, 'hospital_stay', grp_order=['Yes', 'No'],
 	grp_colours = plotly.colors.qualitative.Set1,
 	do_vio = False, do_pts = False, sym_constant=True, sym_offset=1,
-	box_args = {'boxpoints': 'outliers', 'notched': True},
+	box_args = {'boxpoints': 'outliers'},
 )
 save_and_display_figure(hosp_cog_plots, 'Figure_4b')
 
@@ -1293,7 +1294,6 @@ if Zcc.hospital_stay.dtype == 'category':
 		.todense()
 	)
 
-#%%
 full_model_w_hosp = ws.build_model_expression(fnames, 'hospital_stay')
 print(f"Model Expression: {full_model_w_hosp}")
 
@@ -1344,14 +1344,14 @@ rH_b_fig.savefig('./outputs/images/Figure_6b.svg')
 #%%
 pairwise_data = Zcc[comp_scores+fnames].join(fdata0, how='left')
 health_vars = var_order
-results = (pd
+rs1 = (pd
 	.concat([ws.regression_analyses(f"%s ~ {var}", comp_scores, pairwise_data)[0] for var in health_vars])
 	.drop('Intercept', level='contrast')
 	.pipe(ws.adjust_pvals, adj_across='all', adj_type='fdr_bh')
 )
 
-ff= wp.create_stats_figure(
-	results, 'tstat', 'p_adj', diverging=True, vertline=None,
+fs1 = wp.create_stats_figure(
+	rs1, 'tstat', 'p_adj', diverging=True, vertline=None,
 	correction='FDR', stat_range=[-6.3, 6.3])
 
 #%% [markdown]
@@ -1366,44 +1366,16 @@ Zcc_ = Zcc.copy()
 Zcc_[Xcovar] = Xtfm_.transform(Zcc_[Xcovar])
 Zcc_['pre_existing_condition'] = Zcc_['pre_existing_condition'].astype('int')
 
-results = (pd
-	.concat([ws.regression_analyses(f"%s ~ {var}", comp_scores, pairwise_data)[0] for var in IVs])
+rs2 = (pd
+	.concat([ws.regression_analyses(f"%s ~ {var}", comp_scores, Zcc_)[0] for var in IVs])
 	.drop('Intercept', level='contrast')
 	.pipe(ws.adjust_pvals, adj_across='all', adj_type='fdr_bh')
 )
 
-# Let's run a linear regression that predicts each composite cognitive score
-# from each variable in the list. Then, adjust all the coefficient p-values
-# (5 x # of vars) using false discovery rate.
-rEXPL_regressions = [ws.regression_analyses(f"%s ~ {v}", comp_scores, Zcc_) for v in IVs]
-rEXPL_regressions = [r[0].drop('Intercept', level='contrast') for r in rEXPL_regressions]
-rEXPL_regressions = pd.concat(rEXPL_regressions, axis=0)
-rEXPL_regressions = ws.adjust_pvals(
-	rEXPL_regressions, adj_across='all', adj_type='fdr_bh')
+fs2 = wp.create_stats_figure(
+	rs2, 'tstat', 'p_adj', diverging=True, vertline=None,
+	correction='FDR', stat_range=[-6.3, 6.3])
 
-# Here we'll do the Bayesian model comparisons, comparing a model with the 
-# single variable (~ v) to an intercept-only model (~ 1).
-models = [{'name': v, 'h0': f"%s ~ 1", 'h1': f"%s ~ {v}"} for v in IVs]
-rEXPL_comparisons = ws.compare_models(models, Zcc_, comp_scores, smf.ols)
-
-# Make the figures...
-rEXPL_ts = wp.create_stats_figure(
-	rEXPL_regressions, 'tstat', 'p_adj', diverging=True, vertline=2, 
-	correction='FDR', stat_range=[-6, 6])
-
-rEXPL_bf = wp.create_bayes_factors_figure(rEXPL_comparisons, 
-	vertline=2, cell_scale=0.6)
-
-rEXPL_ts.savefig('./outputs/images/Figure_S5A.svg')
-rEXPL_bf.savefig('./outputs/images/Figure_S5B.svg')
-
-# Make the table of BFs...
-rEXPL_bf_table = (rEXPL_comparisons['BF10']
-	.unstack('score')
-	.loc[vars_, comp_scores]
-)
-
-rEXPL_bf_table.to_csv('./outputs/tables/Table_S12.csv')
 
 #%% [markdown]
 # ### Sankey Diagram
@@ -1522,10 +1494,9 @@ sdd = SankeyDefinition(nodes, bundles, order, flow_partition=target)
 #%%
 SVG('./outputs/images/Figure_S1.svg')
 #%% [markdown]
-# Last updated 2021-07-19 by cwild
+# Last updated 2022-03-01 by cwild
 
 
 
 # %%
 
-# %%

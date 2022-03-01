@@ -303,11 +303,11 @@ rc_title = {
 
 rc_yaxis = {
 	'title': {'text': 'Score (SDs)', 'standoff': 2},
-    'automargin': True,
+    'automargin': False,
 	'range': [-4.2, 4.1],
 	'tickmode': 'array',
 	'tickvals': np.arange(-4, 4+1),
-	'ticktext': [f"{y}  " for y in np.arange(-4, 4+1)]
+	'ticktext': [f"{y}   " for y in np.arange(-4, 4+1)]
 }
 
 rc_layout = {
