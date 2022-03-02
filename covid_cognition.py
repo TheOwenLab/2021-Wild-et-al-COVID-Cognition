@@ -623,19 +623,18 @@ var_rename = {
 	'baseline_functioning_Yes': 'subj_baseline',
 	'baseline_functioning': 'subj_baseline',
 	'subjective_memory': 'subj_memory',
-	# 'days_since_test': 'days_since_test'
 }
 
 var_order = sf36vars + mhvars + [
 	'subj_memory',
 	'subj_baseline',
 	'WHO_COVID_severity',
-	# 'days_since_test'
+	'days_since_test'
 ]
 
 fdata.WHO_COVID_severity = fdata.WHO_COVID_severity >= 2
 fdata_tfm = ColumnTransformer([
-	('z', StandardScaler(), sf36vars), #+['days_since_test']),
+	('z', StandardScaler(), sf36vars+['days_since_test']),
 	('r', MinMaxScaler(feature_range=(-1,1)), mhvars+['subjective_memory', 'WHO_COVID_severity']),
 	('c', OneHotEncoder(drop='first'), ['baseline_functioning']),
 ]).fit(fdata)
@@ -1341,18 +1340,39 @@ rH_b_fig.savefig('./outputs/images/Figure_6b.svg')
 # instead of factor scores, with the cosngitive scores. THen we can see if 
 # certain indicators are good predictors of cognitive performance,
 
-#%%
-pairwise_data = Zcc[comp_scores+fnames].join(fdata0, how='left')
-health_vars = var_order
-rs1 = (pd
+#%% 
+# 1st, we do simple pairwise correlations: 1 predictor in the model
+health_vars = var_order #+ ['hospital_stay']
+pairwise_data = Zcc[comp_scores+fnames+['hospital_stay']].join(fdata0, how='left')
+
+p_adjustment = {'adj_across': 'all', 'adj_type': 'fdr_bh'}
+rs1a = (pd
 	.concat([ws.regression_analyses(f"%s ~ {var}", comp_scores, pairwise_data)[0] for var in health_vars])
 	.drop('Intercept', level='contrast')
-	.pipe(ws.adjust_pvals, adj_across='all', adj_type='fdr_bh')
+	.pipe(ws.adjust_pvals, **p_adjustment)
 )
 
-fs1 = wp.create_stats_figure(
-	rs1, 'tstat', 'p_adj', diverging=True, vertline=None,
+fs1a = wp.create_stats_figure(
+	rs1a, 'tstat', 'p_adj', diverging=True, vertline=None,
 	correction='FDR', stat_range=[-6.3, 6.3])
+
+fs1a.savefig('./outputs/images/Figure_7a.svg')
+
+# 2nd, enter all the variables into the same regression model then test each
+# parameter separately.
+model_exp = ws.build_model_expression(health_vars)
+rs1b = (ws
+	.regression_analyses(model_exp, comp_scores, pairwise_data)[0]
+	.drop('Intercept', level='contrast')
+	.pipe(ws.adjust_pvals, **p_adjustment)
+)
+
+fs1b = wp.create_stats_figure(
+	rs1b, 'tstat', 'p_adj', diverging=True, vertline=None,
+	correction='FDR', stat_range=[-6.3, 6.3])
+
+fs1a.savefig('./outputs/images/Figure_7b.svg')
+
 
 #%% [markdown]
 # ### Nuisance Variables
@@ -1376,6 +1396,7 @@ fs2 = wp.create_stats_figure(
 	rs2, 'tstat', 'p_adj', diverging=True, vertline=None,
 	correction='FDR', stat_range=[-6.3, 6.3])
 
+fs2.savefig('./outputs/images/Figure_7b.svg')
 
 #%% [markdown]
 # ### Sankey Diagram
@@ -1485,7 +1506,7 @@ bundles = [
 	Bundle('start', 'end', waypoints=['hospital', 'o2', 'ICU', 'ventilator'], flow_selection="(ICU_stay == 'Yes')"),
 	Bundle('start', 'end', waypoints=['hospital', 'o2', 'ICU'], flow_selection="(ICU_stay == 'No')"),
 ]
-
+#%%
 sdd = SankeyDefinition(nodes, bundles, order, flow_partition=target)
 (weave(sdd, links, palette=colormap)
 	.to_widget(width=1000, align_link_types=True)
@@ -1495,8 +1516,6 @@ sdd = SankeyDefinition(nodes, bundles, order, flow_partition=target)
 SVG('./outputs/images/Figure_S1.svg')
 #%% [markdown]
 # Last updated 2022-03-01 by cwild
-
-
 
 # %%
 
