@@ -359,7 +359,7 @@ def two_sample_ttests(
         t = ttest(
             grp_data[0][dv], grp_data[1][dv], 
             confidence=(1-corrected_alpha_from(**correction_args)),
-            paired=paired, tail=tails)
+            paired=paired, alternative=tails)
         t.index.names = ['contrast']
         t['value'] = grp_data[0][dv].mean() - grp_data[1][dv].mean()
         results.append(t)

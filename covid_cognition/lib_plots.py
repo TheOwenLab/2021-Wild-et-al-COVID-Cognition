@@ -39,17 +39,17 @@ def plotly_template():
             # plot_bgcolor = 'rgba(1,1,1,0.1)',
             plot_bgcolor = 'white',
             font_family = 'sans-serif',
-            font = {'size': 10},
+            font = {'size': 8},
             xaxis = {
                 'zeroline': True,
                 'zerolinecolor': _GRID_COLOUR,
-                'zerolinewidth': 1,
+                'zerolinewidth': 1.5,
                 'gridcolor': 'white',
                 'gridwidth': 1
             },
             yaxis = {
                 'zeroline': True, 
-                'zerolinewidth': 1,
+                'zerolinewidth': 1.5,
                 'gridwidth': 1,
                 'zerolinecolor': _GRID_COLOUR,
                 'gridcolor': _GRID_COLOUR,
@@ -74,6 +74,18 @@ def plotly_template():
             )]
         }
     }
+
+def mm_to_pts(mm, dpi=300):
+    """ Converts a length in mm to points, given the dots per inch (DPI)
+
+    Args:
+        mm (numeric): the length in millimetres
+        dpi (numeric): the dots per inch (DPI) of the figure (default: 300)
+    
+    Returns:
+        (numeric): the dimsension in points
+    """
+    return np.ceil(mm / 100 / 2.54 * dpi)
 
 def create_stats_figure(
         results, stat_name, p_name, alpha=0.05, log_stats=True, 
@@ -283,23 +295,24 @@ def create_bayes_factors_figure(results, log_stats=True,
 # values in order to change the plots when needed.
 
 rc_title = {
-	'pad': {'b': 10, 'l': 10},
+	'pad': {'b': 10, 'l': 0},
 	'yanchor': 'bottom', 'xanchor': 'left',
 	'yref': 'paper', 'xref': 'paper',
 	'x': 0, 'y': 1
 }
 
 rc_yaxis = {
-	'title': 'Score (SDs)',
-	'range': [-4.2, 4.05],
+	'title': {'text': 'Score (SDs)', 'standoff': 2},
+    'automargin': False,
+	'range': [-4.2, 4.1],
 	'tickmode': 'array',
 	'tickvals': np.arange(-4, 4+1),
-	'ticktext': [f"{y}  " for y in np.arange(-4, 4+1)]
+	'ticktext': [f"{y}   " for y in np.arange(-4, 4+1)]
 }
 
 rc_layout = {
-	'width': 400, 'height': 350,
-	'margin': {'b': 30, 't': 40, 'l': 50, 'r': 20},
+	'width': 400, 'height': 275,
+	'margin': {'b': 15, 't': 30, 'l': 35, 'r': 10},
 	'title': rc_title,
 	'yaxis': rc_yaxis,
 }
@@ -314,7 +327,8 @@ def raincloud_plot(
         df, plt_vars, grp_var, grp_order=None, grp_colours=cb.Dark2,
         do_box=True, do_pts=True, do_vio=True,
         box_args={}, pts_args={}, mrk_args={}, vio_args={},
-        pts_jitter=None, vio_jitter=False, sym_offset=0, colour_offset=0,
+        pts_jitter=None, vio_jitter=False, 
+        sym_offset=0, sym_constant=False, colour_offset=0,
         layout_args=None, legend_args=None
     ):
     """ This is a custom implementation of a "raincloud" plot, that displays
@@ -371,6 +385,8 @@ def raincloud_plot(
         vio_jitter (boolean) - if True, staggers the half violin plots like the
             box and stripe plots. if False, they overlap.
         sym_offset (integer) - offests the symbols ID (default: 0)
+        sym_constant (boolean) - should the symbol be the same for all groups?
+            (default: False)
         layout_args (dict) - extra layout options passed to plotly.
         legend_args (dict) - extra legend options passed to plotly.
 
@@ -386,7 +402,7 @@ def raincloud_plot(
         grp_order = list(grps)
 
     # Widths of the gap, points, box, and violin sections
-    w_x = 1.
+    w_x = 0.25
     w_pt = 1. if do_pts else 0
     w_bx = 2. if do_box else 0
     w_vi = 1. if do_vio else 0
@@ -400,7 +416,7 @@ def raincloud_plot(
 
     # Offsets for each group within each section
     o_pt = w_pt*0.5*(np.arange(0, n_grps)/(n_grps-1) - 0.5) if n_grps > 0 else [0]
-    o_bx = w_bx*0.5*(np.arange(0, n_grps)/(n_grps-1) - 0.5) if n_grps > 0 else [0]
+    o_bx = w_bx*0.46*(np.arange(0, n_grps)/(n_grps-1) - 0.5) if n_grps > 0 else [0]
     o_vi = w_vi*0.5*(np.arange(0, n_grps)/(n_grps-1)) if n_grps > 0 else [0]
 
     jitter = .75/n_grps if pts_jitter is None else pts_jitter
@@ -420,7 +436,7 @@ def raincloud_plot(
                 name = g,
                 mode = 'markers',
                 marker = dict(
-                    symbol = ig+sym_offset,
+                    symbol = sym_offset if sym_constant else ig+sym_offset,
                     color = grp_colours[ig],
                     opacity = 0.5,
                     line = dict(
@@ -525,14 +541,14 @@ def raincloud_plot(
             tickmode = 'array',
             tickvals = c_bx,
             ticktext = plt_vars,
-            range = [0, w_plt+w_x*2]
+            range = [0, w_plt+w_x*3]
         ),
         yaxis = dict(
             title = 'Score (SDs)',
-            range = [-4.2, 4.05],
+            range = [-3.7, 3.6],
             tickmode = 'array',
-            tickvals = np.arange(-4, 4+1),
-            ticktext = [f"{y}  " for y in np.arange(-4, 4+1)]
+            tickvals = np.arange(-3, 3+1),
+            ticktext = [f"{y}  " for y in np.arange(-3, 3+1)]
         ),
         legend = {**legend_opts, **legend_args}
     )
