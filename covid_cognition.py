@@ -1,5 +1,5 @@
 #%% [markdown]
-# # Seeing through brain fog: disentangling the cognitive, physical, and mental health sequalae of COVID-19. 
+# # Disentangling the cognitive, physical, and mental health sequalae of COVID-19. 
 # ### Conor J. Wild*, Loretta Norton, David K. Menon, David A. Ripsman, Richard H. Swartz, & Adrian M. Owen
 # #### Corresponding Author: cwild@uwo.ca, conorwild@gmail.com
 
