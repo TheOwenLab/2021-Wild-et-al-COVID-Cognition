@@ -1241,7 +1241,7 @@ hosp_cog_plots = wp.raincloud_plot(
 	Zcc, comp_scores, 'hospital_stay', grp_order=['Yes', 'No'],
 	grp_colours = plotly.colors.qualitative.Set1,
 	do_vio = False, do_pts = False, sym_constant=True, sym_offset=1,
-	box_args = {'boxpoints': 'outliers'},
+	box_args = {'boxpoints': 'outliers', 'boxmean': True, 'lowerfence': [-4]},
 )
 save_and_display_figure(hosp_cog_plots, 'Figure_4b')
 
