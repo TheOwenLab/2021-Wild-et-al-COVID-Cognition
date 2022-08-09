@@ -27,7 +27,7 @@ idx = pd.IndexSlice
 from matplotlib import rc
 plt.rcParams['figure.dpi'] = 100
 plt.rcParams.update({'font.size': 10})
-rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
+rc('font',**{'family':'sans-serif','sans-serif':['Avenir']})
 plt.rcParams['svg.fonttype'] = 'none'
 
 # Default layout for any plots created with Plotly
@@ -38,7 +38,7 @@ def plotly_template():
         'layout': go.Layout(
             # plot_bgcolor = 'rgba(1,1,1,0.1)',
             plot_bgcolor = 'white',
-            font_family = 'sans-serif',
+            font_family = 'avenir',
             font = {'size': 8},
             xaxis = {
                 'zeroline': True,
