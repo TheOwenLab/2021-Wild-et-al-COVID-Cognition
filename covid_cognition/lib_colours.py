@@ -125,6 +125,8 @@ def plotly_cmap(type_, name_):
     pmap  = getattr(ctype, name_)
     return pmap
 
+from matplotlib.colors import to_rgb
+
 def create_mpl_cmap(cmap, n_steps=10, alpha=1.0):
     """
     """
@@ -135,6 +137,8 @@ def create_mpl_cmap(cmap, n_steps=10, alpha=1.0):
 
     if is_rgb(cmap[0]) and alpha is not None:
         cmap = rgb_to_rgba(cmap, alpha=alpha)
+    elif cmap[0][0] == "#":
+        cmap = [to_rgb(hex) for hex in cmap]
     elif isinstance(cmap[0], str):
         cmap = unlabel_rgbs(cmap)
 
