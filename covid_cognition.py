@@ -80,7 +80,7 @@ af_ = cbs.abbrev_features(af)
 				
 # From Hampshire et al. 2012, and Wild et al. These are the variables that are
 # related to performance on these cognitive tasks.
-Xcovar = ['age', 'sex', 'post_secondary', 'SES', 'exercise',
+Xcovar = ['age', 'gender', 'post_secondary', 'SES', 'exercise',
 	'nicotine', 'alcohol', 'cannabis', 'stimulants', 'depressants']
 
 # Loads the control dataset (Sleep Study, 2017)
@@ -102,7 +102,7 @@ Qctrl = (CS
 	.questionnaire.data
 	.reset_index().astype({'user': str})
 	.set_index('user')
-	.rename(columns={'SES_growing_up': 'SES'})
+	.rename(columns={'SES_growing_up': 'SES', 'sex': 'gender'})
 	.assign(post_secondary = lambda x: x.education >= "Bachelor's Degree")
 	.assign(nicotine = lambda x: x.cigarettes_per_day > 0)
 	.assign(alcohol = lambda x: x.alcohol_per_week > 14)
@@ -117,7 +117,7 @@ Zctrl = (Yctrl
 	.join(Qctrl[Xcovar], how='inner')
 	.pipe(report_N, 'join datasets', reset_count=True)
 	.query('(age >= 18) & (age <= 100)')
-	.query('sex in ["Male", "Female"]')
+	.query('gender in ["Male", "Female"]')
 	.pipe(report_N, 'filter age')
 	.pipe(report_N, 'English only')
 	.dropna(subset=Xcovar+af_)
@@ -275,7 +275,7 @@ age_q_tfm = Pipeline(steps=[
 
 x_tfms = [
 	('cont',  age_q_tfm, ['age']),
-	('c_sex', OneHotEncoder(drop=['Female']), ['sex']),
+	('c_gender', OneHotEncoder(drop=['Female']), ['gender']),
 	('c_edu', OneHotEncoder(drop=[False]), ['post_secondary']),
 	('c_ses', OneHotEncoder(drop=['At or above poverty level']), ['SES']),
 	('c_oth', OneHotEncoder(drop=[False, False, True, False, False, False]),
@@ -335,6 +335,7 @@ Qcc = (CC.questionnaire.data
 	.assign(alcohol = lambda df: df.alcohol > 14)
 	.assign(exercise = lambda df: df.exercise_freq >= 'Weekly')
 	.assign(cannabis = lambda df: df.cannabis > 0)
+	.assign(gender = lambda df: df['sex']) # Ambiguously worded question
 	.rename(columns={'drugs_stimulants': 'stimulants', 'drugs_depressants': 'depressants'})
 )
 
@@ -367,7 +368,7 @@ Zcc = (Ycc
 	.pipe(report_N, '>= 18 years')
 	.query('(age <= 100)')
 	.pipe(report_N, '<= 100 years')
-	.query('sex in ["Male", "Female"]')
+	.query('gender in ["Male", "Female"]')
 	.pipe(report_N, 'filter age')
 	.pipe(ws.filter_df, subset=df_, sds=[6], drop=True)
 	.pipe(report_N, '6 SD filter')
@@ -738,26 +739,26 @@ Zcc_ = Zcc.copy()
 Zcc_[Xcovar] = Xtfm_.transform(Zcc[Xcovar])
 
 # Build and estimate regression models for each health factor score
-# (fnames) using the expression: '~ age + sex + post_secondary + SES'.
+# (fnames) using the expression: '~ age + gender + post_secondary + SES'.
 r0_regressions, _ = ws.regression_analyses(
-	'%s ~ age + sex + post_secondary + SES', fnames, Zcc_, n_comparisons=8)
+	'%s ~ age + gender + post_secondary + SES', fnames, Zcc_, n_comparisons=8)
 
 # Then, we perform model comparisons where the null or reduced model (h0) does
 # not contain the variable of interest, whereas the alternative model (h1) DOES.
 # This function returns Bayes factors, effect sizes, likelihood ratios, etc.
 r0_comparisons = ws.compare_models([
 	{ 'name': 'age',
-		'h0': '%s ~ sex + post_secondary + SES', 
-		'h1': '%s ~ age + sex + post_secondary + SES' }, 
-	{ 'name': 'sex',
+		'h0': '%s ~ gender + post_secondary + SES', 
+		'h1': '%s ~ age + gender + post_secondary + SES' }, 
+	{ 'name': 'gender',
 		'h0': '%s ~ age + post_secondary + SES', 
-		'h1': '%s ~ age + sex + post_secondary + SES' },
+		'h1': '%s ~ age + gender + post_secondary + SES' },
 	{ 'name': 'post_secondary',
-		'h0': '%s ~ age + sex + SES', 
-		'h1': '%s ~ age + sex + post_secondary + SES' },
+		'h0': '%s ~ age + gender + SES', 
+		'h1': '%s ~ age + gender + post_secondary + SES' },
 	{ 'name': 'SES',
-		'h0': '%s ~ age + sex + post_secondary', 
-		'h1': '%s ~ age + sex + post_secondary + SES' }],
+		'h0': '%s ~ age + gender + post_secondary', 
+		'h1': '%s ~ age + gender + post_secondary + SES' }],
 
 	Zcc_, fnames, smf.ols, n_comparisons=8)
 
@@ -838,14 +839,14 @@ edu_plot = wp.raincloud_plot(
 )
 save_and_display_figure(edu_plot, 'Figure_2b')
 
-# F1/F2 as a function of sex
-wp.rc_title.update(text = 'C) Sex')
-sex_plot = wp.raincloud_plot(
-	Zcc_, ['F1', 'F2'], 'sex', colour_offset = 2,
+# F1/F2 as a function of gender
+wp.rc_title.update(text = 'C) Gender')
+gender_plot = wp.raincloud_plot(
+	Zcc_, ['F1', 'F2'], 'gender', colour_offset = 2,
 	do_vio = False, do_pts = False, sym_constant=True, sym_offset=1,
 	box_args = {'boxpoints': 'outliers'}
 )
-save_and_display_figure(sex_plot, 'Figure_2c')
+save_and_display_figure(gender_plot, 'Figure_2c')
 
 Zcc2 = Zcc_.copy()
 Zcc_['SES'] = Zcc_['SES'].cat.rename_categories(
@@ -1091,7 +1092,7 @@ save_and_display_figure(qq_f, 'Figure_S4')
 # Let's include a bunch of covariates in the regression models to see if they 
 # explain the relationship(s) between F1 and cognitive scores. We'll include all
 # the coviariates of no interest (Xcovar) that are common to both groups 
-# (age, sex, level of education, SES, exercise, smoking, alcohol, other 
+# (age, gender, level of education, SES, exercise, smoking, alcohol, other 
 # stimulants, and other depressants). These have already been regressed out
 # using parameters estimated from the control group, but there might be 
 # residual effects.
@@ -1337,7 +1338,7 @@ rH_b_fig.savefig('./outputs/images/Figure_6b.svg')
 # ## Supplementary Analyses
 
 # It might be informative to correlate each individual health-related variable,
-# instead of factor scores, with the cosngitive scores. THen we can see if 
+# instead of factor scores, with the congitive scores. Then we can see if 
 # certain indicators are good predictors of cognitive performance,
 
 #%% 
@@ -1514,8 +1515,91 @@ sdd = SankeyDefinition(nodes, bundles, order, flow_partition=target)
 
 #%%
 SVG('./outputs/images/Figure_S1.svg')
+
 #%% [markdown]
-# Last updated 2022-03-01 by cwild
+# ## Extra Figures for Graphical Abstract
+
+from plotly.subplots import make_subplots
+fig = make_subplots(
+	rows=1, cols=loadings.shape[1],
+	x_title='Factor Loading', horizontal_spacing=0.05,
+	shared_yaxes=True,
+	subplot_titles=[
+		'"Physical Health"', '"Mental Health"'
+	]
+)
+
+for ic, factor in enumerate(loadings.columns):
+	fig.add_trace(
+		go.Bar(
+			y=loadings.index,
+			x=loadings[factor].abs(),
+			name=factor,
+			orientation='h',
+			marker={
+				'line': {'width': 1, 'color': 'black'},
+				'colorscale': 'RdBu', 'cmin': -1.0, 'cmax': 1.0,
+				'color': loadings[factor],
+			},
+			showlegend=False,
+		), row=1, col=ic+1
+	)
+
+
+fig.update_xaxes(
+	range=[-0.025,1.0],
+	tickmode='array', tickvals=[0, 0.25, 0.5, 0.75], ticks='outside',
+	tickfont={'size': 10},
+	mirror=True, showline=True, linecolor='black',
+	gridcolor="gray", showgrid=True, griddash='dot',
+)
+
+fig.update_yaxes(
+	ticks="outside", #col=1,
+)
+
+fig.update_yaxes(
+	mirror=True, showline=True, linecolor='black'
+)
+
+fig.update_layout(
+	width=600,
+	margin={'r': 20, 'b': 60, 't': 40},
+	plot_bgcolor='white',
+	font = {'family': 'Arial', 'size': 10}
+)
+save_and_display_figure(fig, 'GA_F1')
+# %%
+cmap = wc.create_mpl_cmap(plotly.colors.sequential.YlOrRd_r, alpha=0.5)
+cmap = wc.to_RGB_255(cmap(np.linspace(0.2, 1.0, 3)))
+
+ga2, _ = wp.means_plot(
+	Zcc, comp_scores, 'score', group='F1_bin', 
+	layout_args={
+		'width': 600, 'height': 400,
+		'legend': {'traceorder': 'reversed'}
+	},
+	group_color_sequence=cmap
+)
+
+ga2.update_yaxes(
+	range = [-0.7, 0.3],
+	zerolinewidth=1.0, zerolinecolor='black',
+	mirror=True, showline=True, linecolor='black',
+	gridcolor="gray", showgrid=True, griddash='dot',
+)
+
+ga2.update_xaxes(
+	ticks='outside',
+	tickfont={'size': 10},
+	mirror=True, showline=True, linecolor='black',
+)
+
+ga2.update_traces(
+	marker={'line_width': 1, 'line_color': 'black'},
+	error_y={'thickness': 1, 'width': 5, 'color': 'black'}
+)
+
+save_and_display_figure(ga2, 'GA_F2')
 
 # %%
-
