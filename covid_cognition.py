@@ -97,7 +97,7 @@ Ynorm = (Ynorm
 
 # Loads and organises the norms questionnaire dataset
 # Have to rename a few columns to match them up to the new study data
-print("Normative Data - Questionnaires:")
+print("\nNormative Data - Questionnaires:")
 Qnorm = (NORMs
 	.questionnaire.data
 	.reset_index().astype({'user': str})
@@ -112,7 +112,7 @@ Qnorm = (NORMs
 
 # Join the test scores (Ynorm) and the questionnaire data (Qnorm), then
 # filter score columns to remove outliers (6 then 4 stdevs)
-print("Normative Dataset:")
+print("\nNormative Dataset:")
 Znorm = (Ynorm
 	.join(Qnorm[Xcovar], how='inner')
 	.pipe(report_N, 'join datasets', reset_count=True)
@@ -1524,6 +1524,8 @@ SVG('./outputs/images/Figure_S1.svg')
 #%% [markdown]
 # ## Extra Figures - Unused
 
+#%%
+# Another kind of factor visualization.
 from plotly.subplots import make_subplots
 fig = make_subplots(
 	rows=1, cols=loadings.shape[1],
@@ -1575,6 +1577,7 @@ fig.update_layout(
 )
 save_and_display_figure(fig, 'GA_F1')
 # %%
+# Alternate version of bar plot of Cognition vs F1
 cmap = wc.create_mpl_cmap(plotly.colors.sequential.YlOrRd_r, alpha=0.5)
 cmap = wc.to_RGB_255(cmap(np.linspace(0.2, 1.0, 3)))
 
@@ -1608,6 +1611,7 @@ ga2.update_traces(
 save_and_display_figure(ga2, 'GA_F2')
 
 # %%
+# Mock / Test figure for Graphical Abstract.
 ga = make_subplots(
 	rows=1, cols=2, shared_yaxes=False,
 	horizontal_spacing=0.05
@@ -1694,4 +1698,5 @@ ga.update_layout(
 	
 )
 save_and_display_figure(ga, 'graphical_abstract')
-# %%
+# %% [markdown]
+# Last updated by cwild 2022-08-11
