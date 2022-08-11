@@ -60,11 +60,11 @@ np.set_printoptions(precision=3)
 idx = pd.IndexSlice
 
 #%% [markdown]
-# ## Control (Pre-Pandemic) Dataset
+# ## Normative (Pre-Pandemic) Dataset
 # ### Load & Preprocess Data
 #%% 
-# Loads the control dataset from the (private) SS library
-Yctrl = CS.score_data
+# Loads the normative dataset from the (private) SS library
+Ynorm = CS.score_data
 
 # List columns corresponding to "timing" (RT) features
 tf  = cbs.timing_features(exclude=['spatial_planning']) # SP does not have one
@@ -75,7 +75,7 @@ df  = cbs.domain_feature_list()
 df_ = cbs.abbrev_features(df)
 
 # A list of "all" available score features
-af  = list(Yctrl.columns)
+af  = list(Ynorm.columns)
 af_ = cbs.abbrev_features(af)
 				
 # From Hampshire et al. 2012, and Wild et al. These are the variables that are
@@ -83,9 +83,9 @@ af_ = cbs.abbrev_features(af)
 Xcovar = ['age', 'gender', 'post_secondary', 'SES', 'exercise',
 	'nicotine', 'alcohol', 'cannabis', 'stimulants', 'depressants']
 
-# Loads the control dataset (Sleep Study, 2017)
-print("\nControl Scores:")
-Yctrl = (Yctrl
+# Loads the norm dataset (Sleep Study, 2017)
+print("\Normative Data - Scores:")
+Ynorm = (Ynorm
 	.pipe(set_column_names, af_)
 	.reset_index('device_type')
 	.pipe(report_N, "initial dataset", reset_count=True)
@@ -95,10 +95,10 @@ Yctrl = (Yctrl
 	.set_index('user')
 )
 
-# Loads and organises the control questionnaire dataset
+# Loads and organises the norms questionnaire dataset
 # Have to rename a few columns to match them up to the new study data
-print("\nControl Questionnaires:")
-Qctrl = (CS
+print("\Normative Data - Questionnaires:")
+Qnorm = (CS
 	.questionnaire.data
 	.reset_index().astype({'user': str})
 	.set_index('user')
@@ -110,11 +110,11 @@ Qctrl = (CS
 	.pipe(report_N, "initial dataset", reset_count=True)
 )
 
-# Join the test scores (Yctrl) and the questionnaire data (Qctrl), then
+# Join the test scores (Ynorm) and the questionnaire data (Qnorm), then
 # filter score columns to remove outliers (6 then 4 stdevs)
-print("\nControl Dataset:")
-Zctrl = (Yctrl
-	.join(Qctrl[Xcovar], how='inner')
+print("\Normative Dataset:")
+Znorm = (Ynorm
+	.join(Qnorm[Xcovar], how='inner')
 	.pipe(report_N, 'join datasets', reset_count=True)
 	.query('(age >= 18) & (age <= 100)')
 	.query('gender in ["Male", "Female"]')
@@ -132,96 +132,96 @@ Zctrl = (Yctrl
 )
 
 # We'll use these in a table.
-Ystats_ctrl  = Zctrl[af_].agg(['mean', 'std'])
+Ystats_norm  = Znorm[af_].agg(['mean', 'std'])
 
 # Calculate mean and stdev for the score features, and remember them so we can 
 # later apply these transformations to the test (CC) dataset.
 Ytfm = Pipeline(steps=[
 	('center', StandardScaler(with_mean=True, with_std=True)),
 	('yeo', PowerTransformer(method='yeo-johnson'))
-]).fit(Zctrl[af_].values)
+]).fit(Znorm[af_].values)
 
-# Z-scores the control test scores (all features)
-Zctrl[af_] = Ytfm.transform(Zctrl[af_].values)
+# Z-scores the norms test scores (all features)
+Znorm[af_] = Ytfm.transform(Znorm[af_].values)
 
 #%% [markdown]
-# ### Factor Analysis (PCA) of CBS Test Scores (Control Group)
+# ### Factor Analysis (PCA) of CBS Test Scores (NORM Group)
 
 #%%
 # Perform a PCA of the 12 primary CBS measures specifying 3 components and a
 # varimax rotation. These choices are based on previous work with these tests:
 # Hampshire et al (2012), Wild et al (2018).
-pca_dmn_ctrl = FactorAnalyzer(
+pca_dmn_norm = FactorAnalyzer(
 	method='principal',
 	n_factors=3, 
-	rotation='varimax').fit(Zctrl[df_])
+	rotation='varimax').fit(Znorm[df_])
 
 # I know the scores turn out in this order....
 domains = ['STM', 'reasoning', 'verbal']
 
 # Build and collect dataframes that will be used for figures and table
 # generation. First, the loadings.
-loadings_ctrl = pd.DataFrame(
-	pca_dmn_ctrl.loadings_, index=cbs.test_names(), columns=domains)
+loadings_norm = pd.DataFrame(
+	pca_dmn_norm.loadings_, index=cbs.test_names(), columns=domains)
 
 # Pairwise correlations between test scores
 var_corrs = pd.DataFrame(
-	pca_dmn_ctrl.corr_, 
+	pca_dmn_norm.corr_, 
 	index=cbs.test_names(), columns=cbs.test_names())
 
 # Eigenvalues of the components
 eigen_values = pd.DataFrame(
-	pca_dmn_ctrl.get_eigenvalues()[0][0:3], 
+	pca_dmn_norm.get_eigenvalues()[0][0:3], 
 	index=domains, columns=['eigenvalues']).T
 
 # Percentage variabnce explained by each component
 pct_variance = pd.DataFrame(
-	pca_dmn_ctrl.get_factor_variance()[1]*100, 
+	pca_dmn_norm.get_factor_variance()[1]*100, 
 	index=domains, columns=['% variance']).T
 
 # Generates and displays the chord plot to visualize the factors
 fig_1a = chord_plot(
-	loadings_ctrl.copy(), var_corrs.copy(), 
+	loadings_norm.copy(), var_corrs.copy(), 
 	cscale_name='Picnic', width=700, height=350, threshold=0.0)
 
 save_and_display_figure(fig_1a, 'Figure_1A')
 
 # Generate a table of task to composite score loadings
-pca_table_ctrl = (pd
-	.concat([loadings_ctrl, eigen_values, pct_variance], axis=0)
-	.join(Ystats_ctrl[df_]
+pca_table_norm = (pd
+	.concat([loadings_norm, eigen_values, pct_variance], axis=0)
+	.join(Ystats_norm[df_]
 		.T.rename(index={r[0]: r[1] for r in zip(df_, cbs.test_names())}))
 	.loc[:, ['mean', 'std']+domains]
 )
 
-pca_table_ctrl.to_csv('./outputs/tables/Table_S3.csv')
+pca_table_norm.to_csv('./outputs/tables/Table_S3.csv')
 
-pca_table_ctrl
+pca_table_norm
 
 #%% [markdown]
-# ### Control Sample: Calculate Composite Cognitive Scores
+# ### Normative Sample: Calculate Composite Cognitive Scores
 #%% 
 # Calculates the 3 cognitive domain scores from the fitted PCA model
-Zctrl[domains] = pca_dmn_ctrl.transform(Zctrl[df_])
+Znorm[domains] = pca_dmn_norm.transform(Znorm[df_])
 
 # Measure of processing speed: take the 1st Principal Component across 
 # timing-related features (the list of tf_), derived from ctrl group data.
-pca_spd_ctrl = FactorAnalyzer(
+pca_spd_norm = FactorAnalyzer(
 	method='principal', 
 	n_factors=1,
-	rotation=None).fit(Zctrl[tf_])
+	rotation=None).fit(Znorm[tf_])
 
 # Force it to go the right away around, so higher scores are better
-if pca_spd_ctrl.loadings_.mean() > 0:
-	pca_spd_ctrl.loadings_ *= -1
+if pca_spd_norm.loadings_.mean() > 0:
+	pca_spd_norm.loadings_ *= -1
 
-Zctrl['processing_speed'] = pca_spd_ctrl.transform(Zctrl[tf_])
+Znorm['processing_speed'] = pca_spd_norm.transform(Znorm[tf_])
 
 # Overall measure across CBS battery: the average of all 12 task z-scores,
 # then rescale to have M = 0.0, SD = 1.0
-Zctrl['overall'] = Zctrl[df_].mean(axis=1)
-overall_tfm = StandardScaler(with_mean=True, with_std=True).fit(Zctrl[['overall']])
-Zctrl['overall'] = overall_tfm.transform(Zctrl[['overall']])
+Znorm['overall'] = Znorm[df_].mean(axis=1)
+overall_tfm = StandardScaler(with_mean=True, with_std=True).fit(Znorm[['overall']])
+Znorm['overall'] = overall_tfm.transform(Znorm[['overall']])
 
 comp_scores = cbs.DOMAIN_NAMES+['processing_speed', 'overall']
 test_scores = df_
@@ -231,21 +231,21 @@ Yvar = test_scores+comp_scores
 #%% [markdown]
 # ## Relationship between covariate (nuisance variables) and cognitive scores.
 # Here, we'll do an an exploratory analysis to see which of our common 
-# covariates have a relationship with cognitive scores -- in the control group.
+# covariates have a relationship with cognitive scores -- in the norm group.
 # Simply, we will run a linear regression model for each test and composite
 # score that includes all of these variables as predictors.
 #%%
-# Temporary duplication of the control dataset, because we modify the age 
+# Temporary duplication of the norm dataset, because we modify the age 
 # mean-centre the age variable for this exploratory analysis.
-Zctrl_ = Zctrl.copy()
-Zctrl_.age -= Zctrl_.age.mean()
+Znorm_ = Znorm.copy()
+Znorm_.age -= Znorm_.age.mean()
 
 covar_model = ws.build_model_expression(Xcovar)
 print(f"Regression formula: {covar_model}")
 
 # Run the linear regression models - this does one for each variable specified
 # in Yvar, which is a list of all test and composite scores.
-r, _ = ws.regression_analyses(covar_model, Yvar, Zctrl_)
+r, _ = ws.regression_analyses(covar_model, Yvar, Znorm_)
 
 # Generate a summary figure to show significant (p < 0.05, uncorrected) 
 # relationships between covariates and cognitive scores (just exploratory)
@@ -282,7 +282,7 @@ x_tfms = [
 		['nicotine', 'alcohol', 'exercise', 'cannabis', 'stimulants', 'depressants']),
 ]
 
-Xtfm = ColumnTransformer(x_tfms, sparse_threshold=0).fit(Zctrl[Xcovar])
+Xtfm = ColumnTransformer(x_tfms, sparse_threshold=0).fit(Znorm[Xcovar])
 
 # Alternate transformer that just mean-centres age.
 age_l_tfm = StandardScaler(with_mean=True, with_std=False)
@@ -290,11 +290,11 @@ x_tfms_alt = x_tfms.copy()
 x_tfms_alt[0] = ('cont',  age_l_tfm, ['age'])
 
 # Create and fit the alternate covariate transformer
-Xtfm_ = ColumnTransformer(x_tfms_alt, sparse_threshold=0).fit(Zctrl[Xcovar])
+Xtfm_ = ColumnTransformer(x_tfms_alt, sparse_threshold=0).fit(Znorm[Xcovar])
 
 # Transform the covariate columns into a numeric matrix
 # "X" denotes a design matrix, "Y" denotes the dependent variables (scores)
-Xctrl = Xtfm.transform(Zctrl[Xcovar])
+Xctrl = Xtfm.transform(Znorm[Xcovar])
 
 # Add an intercept
 Xctrl = np.c_[Xctrl, np.ones(Xctrl.shape[0])]
@@ -302,7 +302,7 @@ Xctrl = np.c_[Xctrl, np.ones(Xctrl.shape[0])]
 # Solve for the the linear regression parameters. 
 # We'll use these to correct the scores from both groups by subtracting the 
 # expected effects (i.e., regressing them out)
-Bctrl = np.dot(pinv(Xctrl), Zctrl[Yvar])
+Bctrl = np.dot(pinv(Xctrl), Znorm[Yvar])
 
 #%% [markdown]
 # ## COVID+ Sample
@@ -465,14 +465,14 @@ if pca_spd_cc.loadings_.mean() > 0:
 
 # Next, compare the similarity of the factor (domain) structures produced from
 # each group (COVID+ and CTRL).
-trg = pca_dmn_ctrl.loadings_
+trg = pca_dmn_norm.loadings_
 src = pca_dmn_cc.loadings_
 
 # Calculates the congruency coeffient for each factor twice, 1st without doing
 # a procustes transformation, 2nd time with the transformation.
 domain_coefs = [tuckersCC(trg, src, do_procrustes = x) for x in [False, True]]
 
-trg = pca_spd_ctrl.loadings_
+trg = pca_spd_norm.loadings_
 src = pca_spd_cc.loadings_
 speed_coefs = [tuckersCC(trg, src, do_procrustes = x) for x in [False, True]]
 
@@ -490,13 +490,13 @@ display(factor_similarities)
 #%%
 
 # Standardizes all score features using the transformer that was fitted on the 
-# control sample data (i.e., using the control sample means and SDs, etc.)
+# normatve sample data (i.e., using the norm sample means and SDs, etc.)
 # Now, cognitive scores will be relative to the CTRL group.
 Zcc[af_] = Ytfm.transform(Zcc[af_])
 
 # Calculate the composite scores
-Zcc[domains] = pca_dmn_ctrl.transform(Zcc[df_])
-Zcc['processing_speed'] = pca_spd_ctrl.transform(Zcc[tf_])
+Zcc[domains] = pca_dmn_norm.transform(Zcc[df_])
+Zcc['processing_speed'] = pca_spd_norm.transform(Zcc[tf_])
 Zcc['overall'] = overall_tfm.transform(Zcc[df_].mean(axis=1).values.reshape(-1,1))
 
 #%%
@@ -540,18 +540,18 @@ display(Zcc[pre_exising_conditions].sum(axis=0))
 # Generate tables of distributions and frequencies for variables that
 # describe the two groups.
 
-# These need to be coded in the control dataset
+# These need to be coded in the norms dataset
 lang_vars = {l: f"speak_{l.lower()}" for l in ['English', 'French', 'Spanish']}
 for l, v in lang_vars.items():
-	Qctrl[v] = Qctrl['languages_spoken'].map(
+	Qnorm[v] = Qnorm['languages_spoken'].map(
 		lambda x: l in x if isinstance(x, str) else False)
 lang_vars = list(lang_vars.values())
 
 # Join the two datasets together so we can do .groupby etc.
 covar_data = pd.concat(
-	[Zctrl[Xcovar].join(Qctrl[['country']+lang_vars]), 
+	[Znorm[Xcovar].join(Qnorm[['country']+lang_vars]), 
 	 Zcc[Xcovar+lang_vars+['country']]], axis=0, 
-	names=['dataset'], keys=['Control', 'COVID+'])
+	names=['dataset'], keys=['NORM', 'COVID+'])
 
 (covar_data
 	.reset_index('dataset')
@@ -596,7 +596,7 @@ top5_countries = (pd.concat(
 				.loc[:, 'country']
 				.value_counts(ascending=False)
 				.iloc[0:5]
-			) for dataset in ['COVID+', 'Control']
+			) for dataset in ['COVID+', 'NORM']
 		}, names=['dataset'])
 	.to_frame()
 	.rename(columns={'country': 'count'})
@@ -863,15 +863,15 @@ ses_plot = wp.raincloud_plot(
 save_and_display_figure(ses_plot, 'Figure_2d')
 
 #%% [markdown]
-# ## COVID+ vs. Control - Comparisons of Cognitive Performance
+# ## COVID+ vs. NORMS - Comparisons of Cognitive Performance
 
 #%%
 # Before comparing the groups, we will correct for all the estimated
 # effects of those confounding variables.
 
-# Adjust the CTRL group for the covariates...
-Yctrl_hat = Xctrl.dot(Bctrl)
-Zctrl[Yvar] -= Yctrl_hat
+# Adjust the NORM group for the covariates...
+Ynorm_hat = Xctrl.dot(Bctrl)
+Znorm[Yvar] -= Ynorm_hat
 
 # Adjust the COVID+ group for the covariates...
 Xcc = Xtfm.transform(Zcc[Xcovar])
@@ -879,14 +879,14 @@ Xcc = np.c_[Xcc, np.ones(Xcc.shape[0])]
 Ycc_hat = Xcc.dot(Bctrl)
 Zcc[Yvar] -= Ycc_hat
 
-# Concatenate the COVID+ and Control datasets for subsequent comparisons 
-# between groups
-Zall = pd.concat([Zcc, Zctrl], axis=0, keys=['CC', 'CTRL'], names=['study'])
+# Concatenate the COVID+ and Normative datasets for subsequent comparisons 
+# between these groups.
+Zall = pd.concat([Zcc, Znorm], axis=0, keys=['CC', 'CTRL'], names=['study'])
 
 #%% 
 # First, perform the t-tests comparing each composite score between groups,
 # where group is specified by the 'study' column. Manually specifying 15
-# comparisons because there are 5 DVs, but we are including the tests of 
+# comparisons because there are 5 DVs, and we are including the tests of 
 # regression parameters from following analyses.
 r1_ttests = (ws
 	.two_sample_ttests('study', comp_scores, Zall, n_comparisons=15)
@@ -896,9 +896,9 @@ r1_ttests = (ws
 save_and_display_table(r1_ttests[ttest_columns], 'Table_3')
 
 #%% [markdown]
-# ## COVID+ vs. Control - Plots of Mean Scores
+# ## COVID+ vs. Norms - Plots of Mean Scores
 # - Divide the COVID+ sample into tercile bins (each has 33%) on each factor
-# - Remember, Y=0.0 is the control sample mean
+# - Remember, Y=0.0 is the NORM sample mean
 #%%
 f1_edges = np.array([-np.Inf, *Zcc['F1'].quantile(q=np.array([1,2])/3).values, np.Inf])
 f2_edges = np.array([-np.Inf, *Zcc['F2'].quantile(q=np.array([1,2])/3).values, np.Inf])
@@ -947,7 +947,7 @@ f3b, _ = wp.means_plot(
 save_and_display_figure(f3b, 'OLD_Figure_3B')
 
 #%%
-# Box plots for cognitive scores by health factor
+# Generate box plots for cognitive scores by health factor.
 
 # Resets the plot layout options to my defaults...
 importlib.reload(wp)
@@ -983,13 +983,13 @@ f2_bin_plot = wp.raincloud_plot(
 save_and_display_figure(f2_bin_plot, 'Figure_3b')
 
 #%% [markdown]
-# ## COVID+ Binned Groups vs. Controls
+# ## COVID+ Binned Groups vs. Norms
 
 #%% 
-# Compare groups in F1 bins to controls
+# Compare COVID+ groups (F1 bins) to Norms.
 r3a_ttests = {}
 for grp, grp_data in Zcc.groupby('F1_bin'):
-	Zall = pd.concat([grp_data, Zctrl], keys=['CC', 'SS'], names=['study'])
+	Zall = pd.concat([grp_data, Znorm], keys=['CC', 'SS'], names=['study'])
 	r3a_ttests[grp] = (ws
 		.two_sample_ttests('study', comp_scores, Zall, n_comparisons=15)
 		.droplevel('contrast')
@@ -998,10 +998,10 @@ r3a_ttests = pd.concat(r3a_ttests.values(), axis=0, keys=r3a_ttests.keys(), name
 
 save_and_display_table(r3a_ttests[ttest_columns], 'Table_S7')
 
-# Compare groups in F2 bins to controls
+# Compare groups in F2 bins to Norms.
 r3b_ttests = {}
 for grp, grp_data in Zcc.groupby('F2_bin'):
-	Zall = pd.concat([grp_data, Zctrl], keys=['CC', 'SS'], names=['study'])
+	Zall = pd.concat([grp_data, Znorm], keys=['CC', 'SS'], names=['study'])
 	r3b_ttests[grp] = (ws
 		.two_sample_ttests('study', comp_scores, Zall, n_comparisons=15)
 		.droplevel('contrast')
@@ -1091,10 +1091,10 @@ save_and_display_figure(qq_f, 'Figure_S4')
 #  
 # Let's include a bunch of covariates in the regression models to see if they 
 # explain the relationship(s) between F1 and cognitive scores. We'll include all
-# the coviariates of no interest (Xcovar) that are common to both groups 
+# the covariates of no interest (Xcovar) that are common to both groups 
 # (age, gender, level of education, SES, exercise, smoking, alcohol, other 
 # stimulants, and other depressants). These have already been regressed out
-# using parameters estimated from the control group, but there might be 
+# using parameters estimated from the normative group, but there might be 
 # residual effects.
 #
 # Also, we'll include a binary predictor that indicates the presence of a pre-
@@ -1248,7 +1248,9 @@ save_and_display_figure(hosp_cog_plots, 'Figure_4b')
 
 #%% [markdown]
 # ### Directly Compare Non-/Hospitalised Groups
-# Description here...
+# We might expect that that there are differences between COVID+ participants
+# who had to receive hospitalised treatments compared to those those who
+# didn't. Let's directly compare these subgroups on each cognitive measure.
 #
 #%% 
 # Two-sample t-tests and stats
@@ -1261,12 +1263,15 @@ r7_ttests = (ws
 save_and_display_table(r7_ttests[ttest_columns], 'Table_S9')
 
 #%% [markdown]
-# ### Compare Each Non-/Hospitalised Group to Controls
+# ### Compare Each Non-/Hospitalised Group to Norms
+# Given that there are no signifcant differences between the subgroups, let's
+# see if these groups differ from the normative data.
+#
 #%% 
 # Two-sample t-tests and stats, etc.
 r8_ttests = {}
 for grp, grp_data in Zcc.groupby('hospital_stay'):
-	Zall = pd.concat([grp_data, Zctrl], keys=['CC', 'SS'], names=['study'])
+	Zall = pd.concat([grp_data, Znorm], keys=['CC', 'SS'], names=['study'])
 	r8_ttests[grp] = (ws
 		.two_sample_ttests('study', comp_scores, Zall, n_comparisons=10)
 		.droplevel('contrast')
@@ -1379,7 +1384,7 @@ fs1a.savefig('./outputs/images/Figure_7b.svg')
 # ### Nuisance Variables
 # Do any of the socio-demographic or other variables that we adjusted our
 # dependent variables (cognitive scores) for show any residual association
-# with the DVss
+# with the DVs? Let's test the pairwise associations (1 IV -> 1 DV).
 
 IVs =  Xcovar + ['pre_existing_condition']
 
@@ -1517,7 +1522,7 @@ sdd = SankeyDefinition(nodes, bundles, order, flow_partition=target)
 SVG('./outputs/images/Figure_S1.svg')
 
 #%% [markdown]
-# ## Extra Figures for Graphical Abstract
+# ## Extra Figures - Unused
 
 from plotly.subplots import make_subplots
 fig = make_subplots(
@@ -1602,4 +1607,91 @@ ga2.update_traces(
 
 save_and_display_figure(ga2, 'GA_F2')
 
+# %%
+ga = make_subplots(
+	rows=1, cols=2, shared_yaxes=False,
+	horizontal_spacing=0.05
+)
+
+colours = plotly.colors.qualitative.Bold
+trace_width = 5.
+ga.add_trace(
+	go.Scatter(
+		x =[-4., 4.], y = [-.42, 0.05],
+		mode='lines', opacity=0.5,
+		line={'color': colours[0], 'width': trace_width,}
+	), row=1, col=1
+)
+
+ga.add_trace(
+	go.Scatter(
+		x =[-4., 4.], y = [-.05, 0.05],
+		mode='lines', opacity=0.5,
+		line={'color': colours[0], 'width': trace_width,}
+	), row=1, col=1
+)
+
+ga.add_trace(
+	go.Scatter(
+		x =[-4., 4.], y = [0, 0],
+		mode='lines',
+		line={'color': 'black', 'dash': 'dot', 'width': 1.5}
+	), row=1, col=1
+)
+
+ga.add_trace(
+	go.Scatter(
+		x =[-4., 4.], y = [-.206, -.194],
+		mode='lines', opacity=0.5,
+		line={'color': colours[1], 'width': trace_width,}
+	), row=1, col=2
+)
+
+ga.add_trace(
+	go.Scatter(
+		x =[-4., 4.], y = [-.05, 0.05],
+		mode='lines', opacity=0.5,
+		line={'color': colours[1], 'width': trace_width,}
+	), row=1, col=2
+)
+
+ga.add_trace(
+	go.Scatter(
+		x =[-4., 4.], y = [0, 0],
+		mode='lines',
+		line={'color': 'black', 'dash': 'dot', 'width': 1.5}
+	), row=1, col=2
+)
+
+ga.update_yaxes(
+	range=[-.5, 0.2],
+	zeroline=False,
+	mirror=False, showline=True, linecolor='black', linewidth=2,
+	showgrid=False, griddash='dot',
+	ticks='outside', tickfont={'size': 12},
+	tickmode='array', tickvals=[-.4, 0., 0.2], showticklabels=False,
+)
+
+ga.update_yaxes(
+	col=2,
+	side='right', showticklabels=True,
+	tickmode='array', tickvals=[-.4, 0., 0.2], ticktext=['-0.4', 'Normal', '0.2'],
+)
+
+ga.update_xaxes(
+	linewidth=2,
+	ticks='outside', tickfont={'size': 12},
+	tickmode='array', tickvals=[-4, 4],
+	mirror=False, showline=True, linecolor='black',
+)
+
+ga.update_layout(
+	font={'family': 'Arial'},
+	width=500, height=250,
+	margin={'l': 10, 'r': 50, 't': 10, 'b': 30},
+	showlegend=False,
+	plot_bgcolor='white',
+	
+)
+save_and_display_figure(ga, 'graphical_abstract')
 # %%
