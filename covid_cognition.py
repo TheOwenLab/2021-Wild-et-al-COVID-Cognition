@@ -43,7 +43,7 @@ from covid_cognition.lib_utils import \
 
 # Helper packages that load the study data.
 from cbs_data.covid_cognition import CovidCognition as CC
-from cbs_data.control_study import ControlStudy as CS # this is the CTRL dataset
+from cbs_data.normative_data import NormativeData as NORMs
 
 # Plotly for plotting
 import plotly
@@ -64,7 +64,7 @@ idx = pd.IndexSlice
 # ### Load & Preprocess Data
 #%% 
 # Loads the normative dataset from the (private) SS library
-Ynorm = CS.score_data
+Ynorm = NORMs.score_data
 
 # List columns corresponding to "timing" (RT) features
 tf  = cbs.timing_features(exclude=['spatial_planning']) # SP does not have one
@@ -84,7 +84,7 @@ Xcovar = ['age', 'gender', 'post_secondary', 'SES', 'exercise',
 	'nicotine', 'alcohol', 'cannabis', 'stimulants', 'depressants']
 
 # Loads the norm dataset (Sleep Study, 2017)
-print("\Normative Data - Scores:")
+print("Normative Data - Scores:")
 Ynorm = (Ynorm
 	.pipe(set_column_names, af_)
 	.reset_index('device_type')
@@ -97,8 +97,8 @@ Ynorm = (Ynorm
 
 # Loads and organises the norms questionnaire dataset
 # Have to rename a few columns to match them up to the new study data
-print("\Normative Data - Questionnaires:")
-Qnorm = (CS
+print("Normative Data - Questionnaires:")
+Qnorm = (NORMs
 	.questionnaire.data
 	.reset_index().astype({'user': str})
 	.set_index('user')
@@ -112,7 +112,7 @@ Qnorm = (CS
 
 # Join the test scores (Ynorm) and the questionnaire data (Qnorm), then
 # filter score columns to remove outliers (6 then 4 stdevs)
-print("\Normative Dataset:")
+print("Normative Dataset:")
 Znorm = (Ynorm
 	.join(Qnorm[Xcovar], how='inner')
 	.pipe(report_N, 'join datasets', reset_count=True)
@@ -896,7 +896,7 @@ r1_ttests = (ws
 save_and_display_table(r1_ttests[ttest_columns], 'Table_3')
 
 #%% [markdown]
-# ## COVID+ vs. Norms - Plots of Mean Scores
+# ## COVID+ vs. NORMS - Plots of Mean Scores
 # - Divide the COVID+ sample into tercile bins (each has 33%) on each factor
 # - Remember, Y=0.0 is the NORM sample mean
 #%%

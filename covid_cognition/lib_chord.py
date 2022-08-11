@@ -273,7 +273,7 @@ def chord_plot(
 
     fig.add_trace(colorbar_trace)
     fig.update_layout(
-        font_family = 'sans-serif',
+        font_family = 'Avenir',
         font = {'size': 10}
     )
 
