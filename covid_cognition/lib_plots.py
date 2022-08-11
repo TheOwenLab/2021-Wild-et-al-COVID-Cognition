@@ -796,7 +796,7 @@ def correlogram(
                 {'text': 'correlation (r)', 'side': 'right'}
             },
         },
-        font={'size': 8},
+        font={'size': 8, 'family': 'Avenir'},
         margin={'t': 20, 'r': 10, 'l': 80, 'b': 20},
         **layout_args)
     return f
