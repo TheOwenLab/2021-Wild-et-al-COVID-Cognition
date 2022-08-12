@@ -51,7 +51,7 @@ pexpect==4.8.0
 pickleshare==0.7.5
 Pillow==8.2.0
 pingouin==0.5.1
-plotly==4.14.3
+plotly==5.9.0
 prometheus-client==0.10.1
 prompt-toolkit==3.0.18
 psutil==5.8.0
@@ -73,6 +73,7 @@ six==1.15.0
 sklearn==0.0
 statsmodels==0.13.2
 tabulate==0.8.9
+tenacity==8.0.1
 terminado==0.9.4
 testpath==0.4.4
 threadpoolctl==2.1.0
