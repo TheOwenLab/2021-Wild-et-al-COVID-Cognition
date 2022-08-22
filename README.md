@@ -1,22 +1,26 @@
 # Disentangling the cognitive, physical, and mental health sequelae of COVID-19.
 
-#### [Conor J. Wild](cwild@uwo.ca)<sup>1,2*</sup>, Loretta Norton<sup>1,3</sup>, David K. Menon<sup>4</sup>, David A. Ripsman<sup>5</sup>, Richard H. Swartz<sup>6+</sup>, & Adrian M. Owen<sup>1,7+</sup>
+#### [Conor J. Wild](cwild@uwo.ca)<sup>1,2,9*</sup>, Loretta Norton<sup>1,3</sup>, David K. Menon<sup>4</sup>, David A. Ripsman<sup>5</sup>, Richard H. Swartz<sup>6,8</sup>, & Adrian M. Owen<sup>1,2,7,8</sup>
 
-1.	The Brain & Mind Institute, Western University, London, Canada
-2.	Physiology and Pharmacology, Western University, London, Canada
-3.	Department of Psychology, King's University College, Western University, London, Canada
-4.	Division of Anaesthesiology, Addenbrooke's Hospital, University of Cambridge, Cambridge, UK
-5.	Department of Medicine, University of Ottawa, Ottawa, Canada
-6.	Department of Medicine (Neurology), Hurvitz Brain Sciences Program, Sunnybrook HSC, University of Toronto, Toronto, Canada
-7.	Department of Psychology, Western University, London, Canada
+1. Western Institute for Neuroscience, Western University, London, ON, Canada, N6A 3K7
+2. Department of Physiology and Pharmacology, Western University, London, ON, Canada, N6A 3K7
+3. Department of Psychology, King's University College, Western University, London, ON, Canada, N6A 3K7
+4. Division of Anaesthesia, Department of Medicine, University of Cambridge, Cambridge, UK, CB2 2QQ
+5. Faculty of Medicine, Department of Neurology, University of British Columbia, Vancouver, BC, Canada, V6T 2B5
+6. Department of Medicine (Neurology), Hurvitz Brain Sciences Program, Sunnybrook HSC, University of Toronto, Toronto, ON, Canada, M4N 3M5
+7. Department of Psychology, Western University, London, ON, Canada, N6A 3K7
+8. Senior author
+9. Lead contact
+* Correspondence: cwild@uwo.ca, conorwild@gmail.com
 
-### v0.2 - Cell Reports Medicine, Revisions (1st round)
+
+### v0.3 - Cell Reports Medicine, Revisions (Provisional Acceptance)
 
 [![DOI](https://zenodo.org/badge/350741081.svg)](https://zenodo.org/badge/latestdoi/350741081)
 
 
 ## Summary
-As COVID-19 cases exceed hundreds of millions globally, many survivors face cognitive challenges and prolonged symptoms. However, important questions about the cognitive impacts of COVID-19 remain unresolved. In the present online study, 478 volunteers who self-reported having received a positive test for COVID-19 test completed a comprehensive cognitive battery and an extensive questionnaire. This group performed significantly worse than pre-pandemic controls on cognitive measures of reasoning, verbal, and overall performance, and processing speed, but not short-term memory – suggesting domain-specific deficits. We identified two distinct factors underlying health measures: one varying with physical symptoms and illness severity, and one with mental health. Crucially, within the COVID-positive group cognitive performance was correlated with physical symptoms, but not mental health, and significant impairments were evident even in the subgroup that did not require hospitalisation. These findings suggest that the subjective experience of “long COVID” or “brain fog” relates to a combination of physical symptoms and cognitive deficits.
+As COVID-19 cases exceed hundreds of millions globally, many survivors face cognitive challenges and prolonged symptoms. However, important questions about the cognitive impacts of COVID-19 remain unresolved. In this cross-sectional online study, 478 adult volunteers who self-reported a positive test for COVID-19 (M=30 days since most recent test) perform significantly worse than pre-pandemic norms on cognitive measures of processing speed, reasoning, verbal, and overall performance, but not short-term memory – suggesting domain-specific deficits. Cognitive differences are even observed in participants that did not require hospitalisation. Factor analysis of health- and COVID-related questionnaires reveals two clusters of symptoms: one that varies mostly with physical symptoms and illness severity, and one with mental health. Cognitive performance is positively correlated with the global measure encompassing physical symptoms, but not the one that broadly described mental health, suggesting that the subjective experience of “long COVID” relates to physical symptoms and cognitive deficits, especially executive dysfunction.
 
 ## Data Availability
 All anonymized data (i.e., cognitive testing and survey/questionnaire data) collected for this study are publicly available in the Scholar Portal Dataverse, as a part of this record (https://doi.org/10.5683/SP2/ZQR9QQ), and can be used to recreate all statistics, tables, and figures in this manuscript.
