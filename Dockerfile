@@ -5,4 +5,5 @@ WORKDIR /app
 RUN pip install -r requirements.txt
 
 COPY . /app
-CMD jupyter notebook --ip 0.0.0.0 --allow-root --no-browser covid_cognition.ipynb 
+CMD FIGURE_RENDERER=notebook OUTDATED_IGNORE=1 \
+jupyter notebook --ip 0.0.0.0 --allow-root --no-browser covid_cognition.ipynb 
