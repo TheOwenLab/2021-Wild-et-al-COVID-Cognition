@@ -6,3 +6,4 @@ __pycache__/
 cbs_data/data/*.csv
 outputs/tables/*.*
 outputs/images/*.*
+.ipynb_checkpoints/
