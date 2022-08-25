@@ -15,17 +15,16 @@ import statsmodels.formula.api as smf
 
 # For data transformations
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import \
-	StandardScaler, \
-	OneHotEncoder, \
-	MinMaxScaler, \
-	PowerTransformer
+from sklearn.preprocessing import (
+	StandardScaler, OneHotEncoder, MinMaxScaler, PowerTransformer
+)
+
 from sklearn.compose import ColumnTransformer
 
 from factor_analyzer import FactorAnalyzer
-from factor_analyzer.factor_analyzer import \
-	calculate_bartlett_sphericity, \
-	calculate_kmo
+from factor_analyzer.factor_analyzer import (
+	calculate_bartlett_sphericity, calculate_kmo
+)
 
 # Custom tools for working with CBS data.
 # Non-vital stuff like names of tests, etc.
@@ -37,9 +36,10 @@ import covid_cognition.lib_stats as ws
 import covid_cognition.lib_plots as wp
 import covid_cognition.lib_colours as wc
 from covid_cognition.lib_chord import chord_plot
-from covid_cognition.lib_utils import \
-	report_N, remove_unused_categories, set_column_names, \
-	save_and_display_figure, save_and_display_table, tuckersCC
+from covid_cognition.lib_utils import (
+	report_N, remove_unused_categories, set_column_names,
+	save_and_display_plotly, save_and_display_table, tuckersCC
+)
 
 # Helper packages that load the study data.
 from cbs_data.covid_cognition import CovidCognition as CC
@@ -184,7 +184,7 @@ fig_1a = chord_plot(
 	loadings_norm.copy(), var_corrs.copy(), 
 	cscale_name='Picnic', width=700, height=350, threshold=0.0)
 
-save_and_display_figure(fig_1a, 'Figure_1A')
+save_and_display_plotly(fig_1a, 'Figure_1A')
 
 # Generate a table of task to composite score loadings
 pca_table_norm = (pd
@@ -445,10 +445,10 @@ fig_1x = chord_plot(
 	cscale_name='Picnic', width=700, height=350, threshold=0.0)
 
 print("COVID+ Factor Structure")
-save_and_display_figure(fig_1x, 'Figure_S5b')
+save_and_display_plotly(fig_1x, 'Figure_S5b')
 
-print("CTRL Factor Structure")
-save_and_display_figure(fig_1a, 'Figure_1A')
+print("NORM Factor Structure")
+save_and_display_plotly(fig_1a, 'Figure_1A')
 
 pca_table_cc.to_csv('./outputs/tables/Table_S4.csv')
 display(pca_table_cc)
@@ -719,11 +719,11 @@ f = chord_plot(
 		loadings, fdata0[var_order].corr(), 
 		width=800, height=350, cscale_name='Picnic', threshold=0.0)
 
-save_and_display_figure(f, 'Figure_1B')
+save_and_display_plotly(f, 'Figure_1B')
 
 # Correlations between health measures (same as shown in the above chord plot)
 f = wp.correlogram(fdata0, subset=var_order, mask_diag=True)
-save_and_display_figure(f, 'Figure_S2')
+save_and_display_plotly(f, 'Figure_S2')
 
 #%%
 # Defines columns that will be used in various stats tables
@@ -820,7 +820,7 @@ age_plot = wp.raincloud_plot(
 	do_vio = False, do_pts = False, sym_constant=True, sym_offset=1,
 	box_args = {'boxpoints': 'outliers'}
 )
-save_and_display_figure(age_plot, 'Figure_2a')
+save_and_display_plotly(age_plot, 'Figure_2a')
 
 wp.rc_layout.update(
 	boxgroupgap = 0.4, 
@@ -837,7 +837,7 @@ edu_plot = wp.raincloud_plot(
 	do_vio = False, do_pts = False, sym_constant=True, sym_offset=1,
 	box_args = {'boxpoints': 'outliers'}
 )
-save_and_display_figure(edu_plot, 'Figure_2b')
+save_and_display_plotly(edu_plot, 'Figure_2b')
 
 # F1/F2 as a function of gender
 wp.rc_title.update(text = 'C) Gender')
@@ -846,7 +846,7 @@ gender_plot = wp.raincloud_plot(
 	do_vio = False, do_pts = False, sym_constant=True, sym_offset=1,
 	box_args = {'boxpoints': 'outliers'}
 )
-save_and_display_figure(gender_plot, 'Figure_2c')
+save_and_display_plotly(gender_plot, 'Figure_2c')
 
 Zcc2 = Zcc_.copy()
 Zcc_['SES'] = Zcc_['SES'].cat.rename_categories(
@@ -860,7 +860,7 @@ ses_plot = wp.raincloud_plot(
 	do_vio = False, do_pts = False, sym_constant=True, sym_offset=1,
 	box_args = {'boxpoints': 'outliers'}
 )
-save_and_display_figure(ses_plot, 'Figure_2d')
+save_and_display_plotly(ses_plot, 'Figure_2d')
 
 #%% [markdown]
 # ## COVID+ vs. NORMS - Comparisons of Cognitive Performance
@@ -936,7 +936,7 @@ f3a, _ = wp.means_plot(
 	group_color_sequence=grayscale_map,
 	bar_args=bar_args, layout_args=layout_args 
 )
-save_and_display_figure(f3a, 'OLD_Figure_3A')
+save_and_display_plotly(f3a, 'OLD_Figure_3A')
 
 layout_args['legend']['title'] = 'F2 (mental health)'
 f3b, _ = wp.means_plot(
@@ -944,7 +944,7 @@ f3b, _ = wp.means_plot(
 	group_color_sequence=grayscale_map,
 	bar_args=bar_args, layout_args=layout_args 
 )
-save_and_display_figure(f3b, 'OLD_Figure_3B')
+save_and_display_plotly(f3b, 'OLD_Figure_3B')
 
 #%%
 # Generate box plots for cognitive scores by health factor.
@@ -970,7 +970,7 @@ f1_bin_plot = wp.raincloud_plot(
 	do_vio = False, do_pts = False, sym_constant = True, sym_offset = 1,
 	box_args = {'boxpoints': 'outliers'}
 )
-save_and_display_figure(f1_bin_plot, 'Figure_3a')
+save_and_display_plotly(f1_bin_plot, 'Figure_3a')
 
 
 wp.rc_title.update(text = 'Mental Health & Wellness (F2)')
@@ -980,7 +980,7 @@ f2_bin_plot = wp.raincloud_plot(
 	do_vio = False, do_pts = False, sym_constant = True, sym_offset = 1,
 	box_args = {'boxpoints': 'outliers'}
 )
-save_and_display_figure(f2_bin_plot, 'Figure_3b')
+save_and_display_plotly(f2_bin_plot, 'Figure_3b')
 
 #%% [markdown]
 # ## COVID+ Binned Groups vs. Norms
@@ -1084,7 +1084,7 @@ qq_f = wp.qq_plots(qq_res, qq_nms,
 	layout_args = {'width': 400, 'height': 400}
 )
 
-save_and_display_figure(qq_f, 'Figure_S4')
+save_and_display_plotly(qq_f, 'Figure_S4')
 
 #%% [markdown]
 # ## Supplementary Analysis
@@ -1160,7 +1160,7 @@ f, m = wp.means_plot(
 		'width': 650, 'height': 350},
 	group_tests=True)
 
-save_and_display_figure(f, 'OLD_Figure_5C')
+save_and_display_plotly(f, 'OLD_Figure_5C')
 
 bar_args = {
 	'range_y': [-0.8, 0.4],
@@ -1191,7 +1191,7 @@ f5a, m = wp.means_plot(
 	bar_args=bar_args, layout_args=layout_args,
 )
 
-save_and_display_figure(f5a, 'OLD_Figure_5A')
+save_and_display_plotly(f5a, 'OLD_Figure_5A')
 
 layout_args['showlegend'] = False
 layout_args['width'] = 200
@@ -1201,7 +1201,7 @@ f5b, m = wp.means_plot(
 	group_color_sequence=grayscale_map,
 	bar_args=bar_args, layout_args=layout_args,
 )
-save_and_display_figure(f5b, 'OLD_Figure_5B')
+save_and_display_plotly(f5b, 'OLD_Figure_5B')
 
 #%% [markdown]
 # Now do the Box plots for these figures...
@@ -1225,7 +1225,7 @@ hosp_hf_plots = wp.raincloud_plot(
 	do_vio = False, do_pts = False, sym_constant=True, sym_offset=1,
 	box_args = {'boxpoints': 'outliers'},
 )
-save_and_display_figure(hosp_hf_plots, 'Figure_4a')
+save_and_display_plotly(hosp_hf_plots, 'Figure_4a')
 
 wp.rc_layout.update(
 	width = wp.mm_to_pts(w2, dpi=1000),
@@ -1244,7 +1244,7 @@ hosp_cog_plots = wp.raincloud_plot(
 	do_vio = False, do_pts = False, sym_constant=True, sym_offset=1,
 	box_args = {'boxpoints': 'outliers', 'boxmean': True, 'lowerfence': [-4]},
 )
-save_and_display_figure(hosp_cog_plots, 'Figure_4b')
+save_and_display_plotly(hosp_cog_plots, 'Figure_4b')
 
 #%% [markdown]
 # ### Directly Compare Non-/Hospitalised Groups
@@ -1575,7 +1575,7 @@ fig.update_layout(
 	plot_bgcolor='white',
 	font = {'family': 'Arial', 'size': 10}
 )
-save_and_display_figure(fig, 'GA_F1')
+save_and_display_plotly(fig, 'GA_F1')
 # %%
 # Alternate version of bar plot of Cognition vs F1
 cmap = wc.create_mpl_cmap(plotly.colors.sequential.YlOrRd_r, alpha=0.5)
@@ -1608,7 +1608,7 @@ ga2.update_traces(
 	error_y={'thickness': 1, 'width': 5, 'color': 'black'}
 )
 
-save_and_display_figure(ga2, 'GA_F2')
+save_and_display_plotly(ga2, 'GA_F2')
 
 # %%
 # Mock / Test figure for Graphical Abstract.
@@ -1697,6 +1697,6 @@ ga.update_layout(
 	plot_bgcolor='white',
 	
 )
-save_and_display_figure(ga, 'graphical_abstract')
+save_and_display_plotly(ga, 'graphical_abstract')
 # %% [markdown]
 # Last updated by cwild 2022-08-11

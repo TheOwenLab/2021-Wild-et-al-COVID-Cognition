@@ -40,10 +40,10 @@ def set_column_names(df, new_names):
 	df.columns = new_names
 	return df
 
-from IPython.display import SVG, display
-from os import path
+from IPython.display import display
+from os import path, environ
 
-def save_and_display_figure(figure, file_name):
+def save_and_display_plotly(figure, file_name):
 	""" Save images in SVG format (for editing/manuscript) then display inside
 		the notebook. Avoids having to have multiple versions of the image, or 
 		multiple ways of displaying images from plotly, etc.
@@ -51,7 +51,9 @@ def save_and_display_figure(figure, file_name):
 	img_path = path.join('.', 'outputs', 'images')
 	full_file_name = path.join(img_path, f"{file_name}.svg")
 	figure.write_image(full_file_name)
-	display(SVG(full_file_name))
+
+	# Default to a static SVG render, unless we have set an environment var
+	figure.show(renderer=environ.get('FIGURE_RENDERER', 'svg'))
 
 def pval_format(p):
 	""" Formatter for p-values in tables.
