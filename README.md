@@ -23,7 +23,7 @@
 As COVID-19 cases exceed hundreds of millions globally, many survivors face cognitive challenges and prolonged symptoms. However, important questions about the cognitive impacts of COVID-19 remain unresolved. In this cross-sectional online study, 478 adult volunteers who self-reported a positive test for COVID-19 (M=30 days since most recent test) perform significantly worse than pre-pandemic norms on cognitive measures of processing speed, reasoning, verbal, and overall performance, but not short-term memory – suggesting domain-specific deficits. Cognitive differences are even observed in participants that did not require hospitalisation. Factor analysis of health- and COVID-related questionnaires reveals two clusters of symptoms: one that varies mostly with physical symptoms and illness severity, and one with mental health. Cognitive performance is positively correlated with the global measure encompassing physical symptoms, but not the one that broadly described mental health, suggesting that the subjective experience of “long COVID” relates to physical symptoms and cognitive deficits, especially executive dysfunction.
 
 # Graphical Abstract
-<img src = "./preprint/Graphical_Abstract.jpg" width="400" height="400 />
+<img src="./preprint/Graphical_Abstract.jpg" width="350" height="350" />
 
 # Data Availability
 All anonymized data (i.e., cognitive testing and survey/questionnaire data) collected for this study are publicly available in the Scholar Portal Dataverse, as a part of this record (https://doi.org/10.5683/SP2/ZQR9QQ), and can be used to recreate all statistics, tables, and figures in this manuscript.
