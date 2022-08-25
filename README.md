@@ -47,7 +47,7 @@ A subpackage for loading data from this study. Download data files from the [rep
 A subpackage that contains miscellaneous helpers and functions for performing statistics, generating figures, etc.
 
 #### [requirements.txt](https://github.com/TheOwenLab/2021-Wild-et-al-COVID-Cognition/blob/main/requirements.txt)
-Contains the frozen list of python packages (and their versions) used in this data analysis; i.e., the supporting Pyhton environment.
+Contains the frozen list of python packages (and their versions) used in this data analysis; i.e., the supporting Python environment.
 
 #### [./preprint/](https://github.com/TheOwenLab/2021-Wild-et-al-COVID-Cognition/tree/main/preprint)
 Contains PDF files of the manuscript preprint.
