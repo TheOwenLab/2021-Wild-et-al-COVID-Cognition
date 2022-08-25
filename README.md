@@ -28,10 +28,6 @@ As COVID-19 cases exceed hundreds of millions globally, many survivors face cogn
 # Data Availability
 All anonymized data (i.e., cognitive testing and survey/questionnaire data) collected for this study are publicly available in the Scholar Portal Dataverse, as a part of this record (https://doi.org/10.5683/SP2/ZQR9QQ), and can be used to recreate all statistics, tables, and figures in this manuscript. See also [Running This Analysis](https://github.com/TheOwenLab/2021-Wild-et-al-COVID-Cognition/blob/main/README.md#running-this-analysis), below.
 
-# Preprint
-https://www.researchsquare.com/article/rs-373663/v1
-Note, some of the tables in the preprint linked here need some help / reformatting. For better quality, check out the PDFs included in the preprint directory here.
-
 # Respository Contents
 
 ### [covid_cognition.ipynb](https://github.com/TheOwenLab/2021-Wild-et-al-COVID-Cognition/blob/main/covid_cognition.ipynb)
