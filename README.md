@@ -14,7 +14,7 @@
     * Correspondence: cwild@uwo.ca, conorwild@gmail.com
 
 
-### v0.3 - Cell Reports Medicine, Revisions (Provisional Acceptance)
+### v0.3 - Cell Reports Medicine, Revisions (Accepted for publication, pending minor revisions)
 
 [![DOI](https://zenodo.org/badge/350741081.svg)](https://zenodo.org/badge/latestdoi/350741081)
 
