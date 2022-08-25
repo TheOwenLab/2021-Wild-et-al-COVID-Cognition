@@ -5,21 +5,19 @@
 
 #%%
 # Standard libraries
-from IPython.core.display import display_svg
 import pandas as pd
 import numpy as np
 
 from scipy.linalg import pinv
-from scipy.stats import probplot # for QQ-plots
+from scipy.stats import probplot
 import statsmodels.formula.api as smf
 
 # For data transformations
 from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import (
 	StandardScaler, OneHotEncoder, MinMaxScaler, PowerTransformer
 )
-
-from sklearn.compose import ColumnTransformer
 
 from factor_analyzer import FactorAnalyzer
 from factor_analyzer.factor_analyzer import (
@@ -1521,182 +1519,5 @@ sdd = SankeyDefinition(nodes, bundles, order, flow_partition=target)
 #%%
 SVG('./outputs/images/Figure_S1.svg')
 
-#%% [markdown]
-# ## Extra Figures - Unused
-
-#%%
-# Another kind of factor visualization.
-from plotly.subplots import make_subplots
-fig = make_subplots(
-	rows=1, cols=loadings.shape[1],
-	x_title='Factor Loading', horizontal_spacing=0.05,
-	shared_yaxes=True,
-	subplot_titles=[
-		'"Physical Health"', '"Mental Health"'
-	]
-)
-
-for ic, factor in enumerate(loadings.columns):
-	fig.add_trace(
-		go.Bar(
-			y=loadings.index,
-			x=loadings[factor].abs(),
-			name=factor,
-			orientation='h',
-			marker={
-				'line': {'width': 1, 'color': 'black'},
-				'colorscale': 'RdBu', 'cmin': -1.0, 'cmax': 1.0,
-				'color': loadings[factor],
-			},
-			showlegend=False,
-		), row=1, col=ic+1
-	)
-
-
-fig.update_xaxes(
-	range=[-0.025,1.0],
-	tickmode='array', tickvals=[0, 0.25, 0.5, 0.75], ticks='outside',
-	tickfont={'size': 10},
-	mirror=True, showline=True, linecolor='black',
-	gridcolor="gray", showgrid=True, griddash='dot',
-)
-
-fig.update_yaxes(
-	ticks="outside", #col=1,
-)
-
-fig.update_yaxes(
-	mirror=True, showline=True, linecolor='black'
-)
-
-fig.update_layout(
-	width=600,
-	margin={'r': 20, 'b': 60, 't': 40},
-	plot_bgcolor='white',
-	font = {'family': 'Arial', 'size': 10}
-)
-save_and_display_plotly(fig, 'GA_F1')
-# %%
-# Alternate version of bar plot of Cognition vs F1
-cmap = wc.create_mpl_cmap(plotly.colors.sequential.YlOrRd_r, alpha=0.5)
-cmap = wc.to_RGB_255(cmap(np.linspace(0.2, 1.0, 3)))
-
-ga2, _ = wp.means_plot(
-	Zcc, comp_scores, 'score', group='F1_bin', 
-	layout_args={
-		'width': 600, 'height': 400,
-		'legend': {'traceorder': 'reversed'}
-	},
-	group_color_sequence=cmap
-)
-
-ga2.update_yaxes(
-	range = [-0.7, 0.3],
-	zerolinewidth=1.0, zerolinecolor='black',
-	mirror=True, showline=True, linecolor='black',
-	gridcolor="gray", showgrid=True, griddash='dot',
-)
-
-ga2.update_xaxes(
-	ticks='outside',
-	tickfont={'size': 10},
-	mirror=True, showline=True, linecolor='black',
-)
-
-ga2.update_traces(
-	marker={'line_width': 1, 'line_color': 'black'},
-	error_y={'thickness': 1, 'width': 5, 'color': 'black'}
-)
-
-save_and_display_plotly(ga2, 'GA_F2')
-
-# %%
-# Mock / Test figure for Graphical Abstract.
-ga = make_subplots(
-	rows=1, cols=2, shared_yaxes=False,
-	horizontal_spacing=0.05
-)
-
-colours = plotly.colors.qualitative.Bold
-trace_width = 5.
-ga.add_trace(
-	go.Scatter(
-		x =[-4., 4.], y = [-.42, 0.05],
-		mode='lines', opacity=0.5,
-		line={'color': colours[0], 'width': trace_width,}
-	), row=1, col=1
-)
-
-ga.add_trace(
-	go.Scatter(
-		x =[-4., 4.], y = [-.05, 0.05],
-		mode='lines', opacity=0.5,
-		line={'color': colours[0], 'width': trace_width,}
-	), row=1, col=1
-)
-
-ga.add_trace(
-	go.Scatter(
-		x =[-4., 4.], y = [0, 0],
-		mode='lines',
-		line={'color': 'black', 'dash': 'dot', 'width': 1.5}
-	), row=1, col=1
-)
-
-ga.add_trace(
-	go.Scatter(
-		x =[-4., 4.], y = [-.206, -.194],
-		mode='lines', opacity=0.5,
-		line={'color': colours[1], 'width': trace_width,}
-	), row=1, col=2
-)
-
-ga.add_trace(
-	go.Scatter(
-		x =[-4., 4.], y = [-.05, 0.05],
-		mode='lines', opacity=0.5,
-		line={'color': colours[1], 'width': trace_width,}
-	), row=1, col=2
-)
-
-ga.add_trace(
-	go.Scatter(
-		x =[-4., 4.], y = [0, 0],
-		mode='lines',
-		line={'color': 'black', 'dash': 'dot', 'width': 1.5}
-	), row=1, col=2
-)
-
-ga.update_yaxes(
-	range=[-.5, 0.2],
-	zeroline=False,
-	mirror=False, showline=True, linecolor='black', linewidth=2,
-	showgrid=False, griddash='dot',
-	ticks='outside', tickfont={'size': 12},
-	tickmode='array', tickvals=[-.4, 0., 0.2], showticklabels=False,
-)
-
-ga.update_yaxes(
-	col=2,
-	side='right', showticklabels=True,
-	tickmode='array', tickvals=[-.4, 0., 0.2], ticktext=['-0.4', 'Normal', '0.2'],
-)
-
-ga.update_xaxes(
-	linewidth=2,
-	ticks='outside', tickfont={'size': 12},
-	tickmode='array', tickvals=[-4, 4],
-	mirror=False, showline=True, linecolor='black',
-)
-
-ga.update_layout(
-	font={'family': 'Arial'},
-	width=500, height=250,
-	margin={'l': 10, 'r': 50, 't': 10, 'b': 30},
-	showlegend=False,
-	plot_bgcolor='white',
-	
-)
-save_and_display_plotly(ga, 'graphical_abstract')
 # %% [markdown]
-# Last updated by cwild 2022-08-11
+# Last updated by cwild 2022-08-24
