@@ -5,14 +5,13 @@
     1. Western Institute for Neuroscience, Western University, London, ON, Canada, N6A 3K7
     2. Department of Physiology and Pharmacology, Western University, London, ON, Canada, N6A 3K7
     3. Department of Psychology, King's University College, Western University, London, ON, Canada, N6A 3K7
-
- 4. Division of Anaesthesia, Department of Medicine, University of Cambridge, Cambridge, UK, CB2 2QQ
- 5. Faculty of Medicine, Department of Neurology, University of British Columbia, Vancouver, BC, Canada, V6T 2B5
-6. Department of Medicine (Neurology), Hurvitz Brain Sciences Program, Sunnybrook HSC, University of Toronto, Toronto, ON, Canada, M4N 3M5
-7. Department of Psychology, Western University, London, ON, Canada, N6A 3K7
-8. Senior author
-9. Lead contact
-* Correspondence: cwild@uwo.ca, conorwild@gmail.com
+    4. Division of Anaesthesia, Department of Medicine, University of Cambridge, Cambridge, UK, CB2 2QQ
+    5. Faculty of Medicine, Department of Neurology, University of British Columbia, Vancouver, BC, Canada, V6T 2B5
+    6. Department of Medicine (Neurology), Hurvitz Brain Sciences Program, Sunnybrook HSC, University of Toronto, Toronto, ON, Canada, M4N 3M5
+    7. Department of Psychology, Western University, London, ON, Canada, N6A 3K7
+    8. Senior author
+    9. Lead contact
+    * Correspondence: cwild@uwo.ca, conorwild@gmail.com
 
 
 ### v0.3 - Cell Reports Medicine, Revisions (Provisional Acceptance)
