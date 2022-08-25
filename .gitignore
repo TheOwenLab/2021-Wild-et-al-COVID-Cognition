@@ -2,6 +2,7 @@ __pycache__/
 .DS_Store
 .code-workspace
 .vscode/
+.ipynb_checkpoints/
 cbs_data/data/*.csv
 outputs/tables/*.*
 outputs/images/*.*
