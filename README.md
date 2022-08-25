@@ -14,7 +14,7 @@
     * Correspondence: cwild@uwo.ca, conorwild@gmail.com
 
 
-### v0.3 - Cell Reports Medicine, Revisions (Accepted for publication, pending minor revisions)
+### v0.3 - Cell Reports Medicine (accepted for publication, pending minor revisions)
 
 [![DOI](https://zenodo.org/badge/350741081.svg)](https://zenodo.org/badge/latestdoi/350741081)
 
@@ -26,7 +26,7 @@ As COVID-19 cases exceed hundreds of millions globally, many survivors face cogn
 <img src="./preprint/Graphical_Abstract.jpg" width="350" height="350" />
 
 # Data Availability
-All anonymized data (i.e., cognitive testing and survey/questionnaire data) collected for this study are publicly available in the Scholar Portal Dataverse, as a part of this record (https://doi.org/10.5683/SP2/ZQR9QQ), and can be used to recreate all statistics, tables, and figures in this manuscript.
+All anonymized data (i.e., cognitive testing and survey/questionnaire data) collected for this study are publicly available in the Scholar Portal Dataverse, as a part of this record (https://doi.org/10.5683/SP2/ZQR9QQ), and can be used to recreate all statistics, tables, and figures in this manuscript. See also [Running This Analysis](https://github.com/TheOwenLab/2021-Wild-et-al-COVID-Cognition/blob/main/README.md#running-this-analysis), below.
 
 # Preprint
 https://www.researchsquare.com/article/rs-373663/v1
