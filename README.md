@@ -34,8 +34,8 @@ Note, some of the tables in the preprint linked here need some help / reformatti
 
 # Respository Contents
 
-#### [covid_cognition.ipynb](https://github.com/TheOwenLab/2021-Wild-et-al-COVID-Cognition/blob/main/covid_cognition.ipynb)
-A viewable Python notebook of the entire analysis, including embedded images. It represents the most recent version of the analysis, including all tables, figures, and numbers. If you are unable to view the notebook in GitHub by clicking the file above (e.g., you get the _"Sorry, something went wrong."_ message), trying opening it at [nbviewer](https://nbviewer.jupyter.org/github/TheOwenLab/2021-Wild-et-al-COVID-Cognition/blob/master/covid_cognition.ipynb?flush_cache=True).
+### [covid_cognition.ipynb](https://github.com/TheOwenLab/2021-Wild-et-al-COVID-Cognition/blob/main/covid_cognition.ipynb)
+A viewable Python notebook of the entire analysis, including embedded images. It represents the most recent version of the analysis, including all tables, figures, and numbers. If you are unable to view the notebook in GitHub by clicking the file above (e.g., you get the _"Sorry, something went wrong."_ message), trying opening it at [nbviewer](https://nbviewer.jupyter.org/github/TheOwenLab/2021-Wild-et-al-COVID-Cognition/blob/main/covid_cognition.ipynb?flush_cache=True).
 
 ####  [covid_cognition.py](https://github.com/TheOwenLab/2021-Wild-et-al-COVID-Cognition/blob/main/covid_cognition.py)
 The executable analysis script used to generate the notebook.
