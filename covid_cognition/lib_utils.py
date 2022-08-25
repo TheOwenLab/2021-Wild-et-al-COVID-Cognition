@@ -48,12 +48,16 @@ def save_and_display_plotly(figure, file_name):
 		the notebook. Avoids having to have multiple versions of the image, or 
 		multiple ways of displaying images from plotly, etc.
 	"""
-	img_path = path.join('.', 'outputs', 'images')
-	full_file_name = path.join(img_path, f"{file_name}.svg")
-	figure.write_image(full_file_name)
+	# Defaults to svg if not specified.
+	renderer = environ.get('FIGURE_RENDERER', 'svg')
 
-	# Default to a static SVG render, unless we have set an environment var
-	figure.show(renderer=environ.get('FIGURE_RENDERER', 'svg'))
+	# Only bother writing the image to file if we are using static renderer
+	if renderer in ['png', 'jpg', 'svg']:
+		img_path = path.join('.', 'outputs', 'images')
+		full_file_name = path.join(img_path, f"{file_name}.{renderer}")
+		figure.write_image(full_file_name)
+
+	figure.show(renderer=renderer)
 
 def pval_format(p):
 	""" Formatter for p-values in tables.
