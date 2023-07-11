@@ -864,6 +864,16 @@ save_and_display_plotly(ses_plot, 'Figure_2d')
 # ## COVID+ vs. NORMS - Comparisons of Cognitive Performance
 
 #%%
+# Here we combine the two datasets and save to a .csv for LMH. I am 
+# dropping the extra score columns to keep this a reasonable size.
+Zall_LMH_uncorrected = (
+	pd.concat([Zcc, Znorm], axis=0, keys=['CC', 'CTRL'], names=['study'])
+	.drop(columns=[f for f in af_ if f not in df_])
+)
+
+Zall_uncorrected.to_csv('Wild2022_LMH_v2.csv.bz2')
+
+#%%
 # Before comparing the groups, we will correct for all the estimated
 # effects of those confounding variables.
 
@@ -880,6 +890,18 @@ Zcc[Yvar] -= Ycc_hat
 # Concatenate the COVID+ and Normative datasets for subsequent comparisons 
 # between these groups.
 Zall = pd.concat([Zcc, Znorm], axis=0, keys=['CC', 'CTRL'], names=['study'])
+
+# %%
+# Again, saving this dataframe for LMH, but this one is the adjusted score dataset.
+#%% [markdown]
+# Here we combine the two datasets and save to a .csv for LMH. I am 
+# dropping the extra score columns to keep this a reasonable size.
+Zall_LMH = (
+	Zall
+	.drop(columns=[f for f in af_ if f not in df_])
+)
+
+Zall_LMH.to_csv('Wild2022_adjusted_LMH_v2.csv.bz2')
 
 #%% 
 # First, perform the t-tests comparing each composite score between groups,
