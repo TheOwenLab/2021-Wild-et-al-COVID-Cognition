@@ -871,7 +871,10 @@ Zall_LMH_uncorrected = (
 	.drop(columns=[f for f in af_ if f not in df_])
 )
 
-Zall_uncorrected.to_csv('Wild2022_LMH_v2.csv.bz2')
+Zall_LMH_uncorrected.to_csv('Wild2022_LMH_v2.csv.bz2')
+
+print(f"Data shape is {Zall_LMH_uncorrected.shape}")
+Zall_LMH_uncorrected.groupby('study').size()
 
 #%%
 # Before comparing the groups, we will correct for all the estimated
@@ -893,15 +896,10 @@ Zall = pd.concat([Zcc, Znorm], axis=0, keys=['CC', 'CTRL'], names=['study'])
 
 # %%
 # Again, saving this dataframe for LMH, but this one is the adjusted score dataset.
-#%% [markdown]
-# Here we combine the two datasets and save to a .csv for LMH. I am 
-# dropping the extra score columns to keep this a reasonable size.
-Zall_LMH = (
-	Zall
-	.drop(columns=[f for f in af_ if f not in df_])
-)
-
-Zall_LMH.to_csv('Wild2022_adjusted_LMH_v2.csv.bz2')
+Zall_LMH_adjusted = Zall.drop(columns=[f for f in af_ if f not in df_])
+Zall_LMH_adjusted.to_csv('Wild2022_adjusted_LMH_v2.csv.bz2')
+print(f"Data shape is {Zall_LMH_adjusted.shape}")
+Zall_LMH_adjusted.groupby('study').size()
 
 #%% 
 # First, perform the t-tests comparing each composite score between groups,
@@ -1158,11 +1156,11 @@ Xhm['baseline_functioning'] = Xhm['baseline_functioning'].cat.codes
 Xhm = Xhm[(Xhm[sf36vars+mhvars+['subjective_memory', 'WHO_COVID_severity']] >= 0).all(axis=1)]
 
 HMtfm = ColumnTransformer([
-	('sf36vars', MinMaxScaler(feature_range=[0,1]), sf36vars),
-	('subjmem',  MinMaxScaler(feature_range=[0,1]), ['subjective_memory']),
-	('mhvars', MinMaxScaler(feature_range=[0,1]), mhvars),
+	('sf36vars', MinMaxScaler(feature_range=(0,1)), sf36vars),
+	('subjmem',  MinMaxScaler(feature_range=(0,1)), ['subjective_memory']),
+	('mhvars', MinMaxScaler(feature_range=(0,1)), mhvars),
 	('bf', 'passthrough', ['baseline_functioning']),
-	('WHO', MinMaxScaler(feature_range=[0,1]), ['WHO_COVID_severity'])
+	('WHO', MinMaxScaler(feature_range=(0,1)), ['WHO_COVID_severity'])
 ]).fit(Xhm[hms])
 
 Xhm = Xhm[['hospital_stay']].join(
